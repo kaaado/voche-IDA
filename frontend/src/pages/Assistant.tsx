@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -13,8 +14,10 @@ import {
   BookOpen,
   Calendar
 } from 'lucide-react';
-import { mockChatResponses } from '../data/mockData';
 import { PageHeader } from '../components/ui/PageHeader';
+import { aiService } from '../services/aiService';
+import type { ChatMessage } from '../services/aiService';
+import { formatMessageDate } from '../utils/date';
 
 interface Message {
   id: string;
@@ -67,10 +70,15 @@ export default function Assistant() {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   useEffect(() => {
@@ -89,33 +97,39 @@ export default function Assistant() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const response = getResponse(messageContent.toLowerCase());
+    try {
+      // Build conversation history for context
+      const chatHistory: ChatMessage[] = newMessages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
+
+      const responseText = await aiService.generateChatResponse(chatHistory);
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: response,
+        content: responseText,
         sender: 'assistant',
         timestamp: new Date(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error(error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I encountered an error while processing your request. Please make sure the API key is set up correctly in the .env file.",
+        sender: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
-  };
-
-  const getResponse = (query: string) => {
-    // Simple keyword matching for demo
-    for (const [key, response] of Object.entries(mockChatResponses)) {
-      if (key !== 'default' && query.includes(key)) {
-        return response;
-      }
     }
-    return mockChatResponses.default;
   };
 
   const handleQuickQuestion = (query: string) => {
@@ -123,14 +137,6 @@ export default function Assistant() {
     if (question) {
       handleSendMessage(question.text);
     }
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
   };
 
   return (
@@ -152,8 +158,8 @@ export default function Assistant() {
         {/* Chat Interface */}
         <div className="lg:col-span-3 space-y-4">
           {/* Messages Container */}
-          <Card className="h-[600px] flex flex-col shadow-lg border-border/60">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <Card className="h-[calc(100vh-14rem)] min-h-[500px] flex flex-col shadow-lg border-border/60">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -168,14 +174,27 @@ export default function Assistant() {
                   </div>
                   <div className={`max-w-[85%] ${message.sender === 'user' ? 'text-right' : 'text-left'
                     }`}>
-                    <div className={`p-4 rounded-2xl shadow-sm inline-block text-left ${message.sender === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-tr-none'
-                      : 'bg-muted rounded-tl-none'
+                    <div className={`p-4 rounded-2xl shadow-md inline-block text-left ${message.sender === 'user'
+                      ? 'bg-primary-color !text-white rounded-tr-none border border-primary-color/50'
+                      : 'bg-slate-600 dark:bg-secondary-color !text-white border border-slate-600 dark:border-secondary-color/50 rounded-tl-none'
                       }`}>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                      <div className={`text-sm leading-relaxed ${message.sender === 'user' ? 'font-medium' : ''}`}>
+                        <ReactMarkdown
+                          components={{
+                            ul: ({node, ...props}) => <ul className="list-disc ml-5 space-y-1 mb-2" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal ml-5 space-y-1 mb-2" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            p: ({node, ...props}) => <p className="mb-2 last:mb-0 whitespace-pre-wrap" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                            a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1.5 font-medium px-1">
-                      {formatTime(message.timestamp)}
+                      {formatMessageDate(message.timestamp)}
                     </p>
                   </div>
                 </div>
@@ -183,19 +202,19 @@ export default function Assistant() {
 
               {isTyping && (
                 <div className="flex gap-4">
-                  <div className="w-10 h-10 bg-secondary text-secondary-foreground rounded-full flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 bg-secondary-color text-secondary-foreground rounded-full flex items-center justify-center shrink-0">
                     <Bot size={18} />
                   </div>
-                  <div className="bg-muted p-4 rounded-2xl rounded-tl-none">
-                    <div className="flex gap-1.5">
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="bg-card text-card-foreground border border-border shadow-md p-4 rounded-2xl rounded-tl-none">
+                    <div className="flex gap-1.5 h-6 items-center">
+                      <div className="w-2.5 h-2.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce"></div>
+                      <div className="w-2.5 h-2.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                      <div className="w-2.5 h-2.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
                     </div>
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              <div className="h-2 w-full" />
             </div>
 
             {/* Input Area */}
@@ -212,7 +231,7 @@ export default function Assistant() {
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isTyping}
                   size="icon"
-                  className="h-12 w-12 shadow-md hover:scale-105 transition-transform bg-primary-color"
+                  className="h-12 w-12 shadow-md hover:scale-105 transition-transform bg-primary-color cursor-pointer"
                 >
                   <Send size={18} className='text-white' />
                 </Button>
@@ -228,13 +247,13 @@ export default function Assistant() {
                 <Button
                   key={index}
                   variant="outline"
-                  className="h-auto p-4 text-left justify-start bg-card hover:bg-muted hover:text-primary border-dashed hover:border-solid hover:border-primary/50 transition-all text-foreground"
+                  className="group h-auto p-4 text-left justify-start bg-background/50 border border-border/40 shadow-sm hover:shadow-md  hover:translate-x-1 transition-all duration-300 cursor-pointer rounded-xl"
                   onClick={() => handleQuickQuestion(question.query)}
                 >
-                  <div className="bg-primary/10 p-2 rounded-lg mr-3">
+                  <div className="bg-primary-color/10 p-2 rounded-lg mr-3 transition-colors">
                     <Icon size={16} className="text-primary-color" />
                   </div>
-                  <span className="text-sm font-medium">{question.text}</span>
+                  <span className="text-sm font-medium transition-colors">{question.text}</span>
                 </Button>
               );
             })}
@@ -244,58 +263,61 @@ export default function Assistant() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Assistant Capabilities */}
-          <Card className="p-5 shadow-sm">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-primary-color">
-              <HelpCircle size={18} className="text-primary-color"/>
+          <Card className="p-5 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-900 border border-blue-200 dark:border-slate-700 text-white/90 backdrop-blur-md hover:shadow-xl transition-all duration-300 rounded-2xl">
+            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-primary-color pb-3 border-b border-border/50">
+              <HelpCircle size={18} className="text-primary-color/80"/>
               I Can Help With
             </h3>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <div className="w-1.5 h-1.5 bg-primary-color rounded-full mt-2 shrink-0"></div>
-                <span>Finding clinical trials based on your condition and location</span>
+              <li className="group flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/40 shadow-sm hover:shadow-md hover:bg-primary-color/5 hover:border-primary-color/30 hover:scale-[1.02] transition-all duration-300">
+                <div className="w-1.5 h-1.5 bg-primary-color rounded-full mt-2 shrink-0 group-hover:scale-125 transition-transform duration-300"></div>
+                <span className="text-foreground/70 group-hover:text-primary-color dark:group-hover:text-foreground transition-colors font-medium">Finding clinical trials based on your condition and location</span>
               </li>
-              <li className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <div className="w-1.5 h-1.5 bg-secondary-color rounded-full mt-2 shrink-0"></div>
-                <span>Explaining informed consent and patient rights</span>
+              <li className="group flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/40 shadow-sm hover:shadow-md hover:bg-primary-color/5 hover:border-primary-color/30 hover:scale-[1.02] transition-all duration-300">
+                <div className="w-1.5 h-1.5 bg-secondary-color rounded-full mt-2 shrink-0 group-hover:scale-125 transition-transform duration-300"></div>
+                <span className="text-foreground/70 group-hover:text-primary-color dark:group-hover:text-foreground transition-colors font-medium">Explaining informed consent and patient rights</span>
               </li>
-              <li className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <div className="w-1.5 h-1.5 bg-accent-color rounded-full mt-2 shrink-0"></div>
-                <span>Connecting you with relevant community discussions</span>
+              <li className="group flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/40 shadow-sm hover:shadow-md hover:bg-primary-color/5 hover:border-primary-color/30 hover:scale-[1.02] transition-all duration-300">
+                <div className="w-1.5 h-1.5 bg-accent-color rounded-full mt-2 shrink-0 group-hover:scale-125 transition-transform duration-300"></div>
+                <span className="text-foreground/70 group-hover:text-primary-color dark:group-hover:text-foreground transition-colors font-medium">Connecting you with relevant community discussions</span>
               </li>
-              <li className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <div className="w-1.5 h-1.5 bg-blue-color rounded-full mt-2 shrink-0"></div>
-                <span>Recommending educational resources</span>
+              <li className="group flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/40 shadow-sm hover:shadow-md hover:bg-primary-color/5 hover:border-primary-color/30 hover:scale-[1.02] transition-all duration-300">
+                <div className="w-1.5 h-1.5 bg-blue-color rounded-full mt-2 shrink-0 group-hover:scale-125 transition-transform duration-300"></div>
+                <span className="text-foreground/70 group-hover:text-primary-color dark:group-hover:text-foreground transition-colors font-medium">Recommending educational resources</span>
               </li>
             </ul>
           </Card>
 
           {/* Suggested Topics */}
-          <Card className="p-5 shadow-sm">
-            <h3 className="font-semibold mb-3">Suggested Topics</h3>
-            <div className="space-y-2">
+          <Card className="p-5 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-900 border border-blue-200 dark:border-slate-700 text-white/90 backdrop-blur-md hover:shadow-xl transition-all duration-300 rounded-2xl">
+            <h3 className="font-bold text-sm mb-4 flex items-center gap-2 text-foreground pb-3 border-b border-border/50">
+              <MessageCircle size={18} className="text-primary-color" />
+              Suggested Topics
+            </h3>
+            <div className="space-y-2.5">
               {suggestions.map((suggestion, index) => (
                 <Button
                   key={index}
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start text-xs h-auto py-2.5 px-3 whitespace-normal text-left hover:bg-accent/10 hover:text-accent border border-transparent hover:border-accent/20"
+                  className="w-full justify-start text-xs h-auto py-3 px-4 whitespace-normal text-left bg-background/50 border border-border/40 shadow-sm hover:shadow-md hover:bg-primary-color/10 dark:hover:bg-primary-color hover:text-primary-color dark:hover:text-white hover:border-primary-color/30 hover:translate-x-1.5 transition-all duration-300 cursor-pointer rounded-xl"
                   onClick={() => handleSendMessage(suggestion)}
                 >
-                  <span className="line-clamp-2">{suggestion}</span>
+                  <span className="line-clamp-2 font-medium">{suggestion}</span>
                 </Button>
               ))}
             </div>
           </Card>
 
           {/* Tips */}
-          <div className="p-4 rounded-xl bg-blue-color/10 border border-info/20">
-            <h3 className="font-semibold mb-2 text-blue-color text-sm flex items-center gap-2">
-              <Lightbulb size={14} /> Tips for Better Help
+          <div className="p-5 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-900 border border-blue-200 dark:border-slate-700 shadow-md">
+            <h3 className="font-semibold mb-3 text-blue-900 dark:text-blue-100 text-sm flex items-center gap-2">
+              <Lightbulb size={16} className="text-yellow-500" /> Tips for Better Help
             </h3>
-            <ul className="text-xs space-y-1.5 text-muted-foreground/80 font-medium">
-              <li>• Be specific about your location and condition</li>
-              <li>• Ask follow-up questions for clarification</li>
-              <li>• Use "show me" or "find" for actionable requests</li>
+            <ul className="text-xs space-y-2 text-blue-800 dark:text-slate-300 font-medium">
+              <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> Be specific about your location and condition</li>
+              <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> Ask follow-up questions for clarification</li>
+              <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> Use "show me" or "find" for actionable requests</li>
             </ul>
           </div>
         </div>
