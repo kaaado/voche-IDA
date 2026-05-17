@@ -26,8 +26,13 @@ async def connect_redis():
         retry_on_timeout=True,
         health_check_interval=30
     )
-    
-    await redis.config_set("notify-keyspace-events", "Ex")
+    try:
+        await redis.config_set("notify-keyspace-events", "Ex")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Unable to set notify-keyspace-events (expected behavior on managed Redis/Valkey like Render): {e}"
+        )
 
 async def disconnect_redis():
     if redis:
