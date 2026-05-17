@@ -69,8 +69,18 @@ app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 # Dynamic CORS setup including FRONTEND_VAR
 cors_origins_list = list(settings.cors_origins)
-if settings.frontend_var and settings.frontend_var not in cors_origins_list:
-    cors_origins_list.append(settings.frontend_var)
+
+# Read directly from environment to avoid any Pydantic caching/override bugs
+frontend_env = os.getenv("FRONTEND_VAR") or settings.frontend_var
+if frontend_env:
+    # Clean up quotes, whitespace, and trailing slashes
+    clean_origin = frontend_env.strip(" '\"").rstrip("/")
+    if clean_origin and clean_origin not in cors_origins_list:
+        cors_origins_list.append(clean_origin)
+        # Also allow with trailing slash to prevent preflight routing issues
+        cors_origins_list.append(f"{clean_origin}/")
+
+logger.info(f"🔒 Dynamic CORS Allowed Origins: {cors_origins_list}")
 
 app.add_middleware(
     CORSMiddleware,
