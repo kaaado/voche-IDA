@@ -67,9 +67,14 @@ app = FastAPI(
 os.makedirs("uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
+# Dynamic CORS setup including FRONTEND_VAR
+cors_origins_list = list(settings.cors_origins)
+if settings.frontend_var and settings.frontend_var not in cors_origins_list:
+    cors_origins_list.append(settings.frontend_var)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
