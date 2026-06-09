@@ -40,8 +40,10 @@ export default function Events() {
   const queryClient = useQueryClient();
   const { isAuthenticated, openAuthModal } = useAuthContext();
 
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [eventType, setEventType] = useState('all');
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
 
   const { data: events = [], isLoading, isError } = useQuery({
     queryKey: ['events'],
@@ -55,6 +57,7 @@ export default function Events() {
       toast.success('Registration Successful', { description: 'You have been registered!' });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', id] });
+      setPendingEventId(null);  
     },
     onError: (err: any) => {
       const status = err?.status || err?.response?.status;
@@ -63,6 +66,7 @@ export default function Events() {
       } else {
         toast.error('Registration failed. Please try again.');
       }
+       setPendingEventId(null);  
     },
   });
 
@@ -88,7 +92,7 @@ export default function Events() {
     if (!isAuthenticated) {
       openAuthModal("Sign in to your Voche account to register for events.");
       return;
-    }
+    } setPendingEventId(event.event_id);
     if (event.is_registered) {
       cancelMutation.mutate(event.event_id);
     } else {
@@ -244,10 +248,12 @@ export default function Events() {
                   <Button
                     className={`flex-1 shadow-sm transition-all cursor-pointer ${event.is_registered ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                     onClick={(e) => handleRegister(e, event)}
-                    disabled={registerMutation.isPending || cancelMutation.isPending}
+                    disabled={pendingEventId !== null}
                   >
-                    {event.is_registered ? (
-                      <><CheckCircle2 size={16} className="mr-2" /> Registered</>
+                    {pendingEventId === event.event_id ? (
+                      <><Loader2 className="animate-spin" /> Loading...</>
+                    ) : event.is_registered ? (
+                    <><CheckCircle2 /> Registered</>
                     ) : 'Register Now'}
                   </Button>
                   <Button variant="outline" size="icon" className="cursor-pointer" onClick={(e) => handleShare(e, event.title)}>
@@ -315,11 +321,11 @@ export default function Events() {
                   className={`w-full shadow-sm cursor-pointer ${event.is_registered ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                   variant={event.is_registered ? 'default' : 'outline'}
                   onClick={(e) => handleRegister(e, event)}
-                  disabled={registerMutation.isPending || cancelMutation.isPending}
+                  disabled={pendingEventId !== null}
                 >
-                  {event.is_registered
-                    ? <><CheckCircle2 size={14} className="mr-2" /> Registered</>
-                    : 'Register'}
+                  {pendingEventId === event.event_id ? (
+                    <><Loader2 className="animate-spin" /> Loading...</>
+                    ) : event.is_registered ? <><CheckCircle2 /> Registered</> : 'Register'}
                 </Button>
                 <Button
                   variant="ghost"

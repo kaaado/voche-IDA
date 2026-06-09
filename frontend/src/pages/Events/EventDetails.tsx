@@ -116,21 +116,6 @@ export default function EventDetail() {
               Add to Calendar
             </Button>
 
-            <Button
-              size="lg"
-              className={`shadow-lg hover:scale-105 transition-transform font-bold gap-2 cursor-pointer ${
-                isRegistered
-                  ? 'bg-primary-color text-white'
-                  : 'bg-white text-orange-600 hover:bg-gray-100'
-              }`}
-              onClick={handleRegister}
-              disabled={
-                registerMutation.isPending || cancelMutation.isPending
-              }
-            >
-              {isRegistered && <CheckCircle2 size={20} />}
-              {isRegistered ? 'Registered' : 'Register Now'}
-            </Button>
           </div>
         }
       />
