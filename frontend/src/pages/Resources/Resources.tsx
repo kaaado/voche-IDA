@@ -1,5 +1,5 @@
 import { PageHeader } from "../../components/ui/PageHeader";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "../../components/ui/card";
@@ -65,11 +65,18 @@ export default function ResourceLibrary() {
   const [selectedLanguage, setSelectedLanguage] = useState("All");
   const [selectedFeatured, setSelectedFeatured] = useState<boolean | null>(null);
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  // Debounce search 500ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // Task 1: useQuery(['resources'], getAll)
-  const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: [
       "resources",
-      searchQuery,
+      debouncedSearch,
       selectedType,
       selectedCategory,
       sortBy,
@@ -79,7 +86,7 @@ export default function ResourceLibrary() {
     ],
     queryFn: () =>
       resourceService.getAll({
-        search: searchQuery,
+        search: debouncedSearch,
         type: selectedType,
         category: selectedCategory,
         sort: sortBy,
@@ -113,18 +120,22 @@ export default function ResourceLibrary() {
     ));
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary-color" />
-          <p className="text-muted-foreground animate-pulse">
-            Loading resources...
-          </p>
+  {(isLoading || isFetching) && resources.length === 0 && (
+    [...Array(6)].map((_, i) => (
+      <div key={i} className="p-5 rounded-xl border bg-card animate-pulse space-y-3">
+        <div className="flex justify-between">
+          <div className="w-10 h-10 bg-muted rounded-xl" />
+          <div className="w-20 h-5 bg-muted rounded" />
+        </div>
+        <div className="h-5 bg-muted rounded w-3/4" />
+        <div className="h-4 bg-muted rounded w-full" />
+        <div className="flex gap-2 mt-4">
+          <div className="h-8 bg-muted rounded flex-1" />
+          <div className="h-8 bg-muted rounded w-16" />
         </div>
       </div>
-    );
-  }
+    ))
+  )}
 
   if (isError) {
     return (
@@ -397,7 +408,7 @@ export default function ResourceLibrary() {
       <div className="space-y-4 pt-4">
         <h2 className="text-xl font-bold text-foreground">All Resources</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {resources.map((resource: Resource) => {
+            {!(isLoading && resources.length === 0) && resources.map((resource: Resource) => {
             const TypeIcon = getTypeIcon(resource.type);
             return (
               <Card
@@ -417,7 +428,7 @@ export default function ResourceLibrary() {
                   </Badge>
                 </div>
 
-                <h3 className="font-bold mb-2 line-clamp-2 group-hover:text-primary-color transition-colors">
+                  <h3 className="font-bold text-lg mb-2 group-hover:text-primary-color dark:group-hover:text-accent transition-colors line-clamp-2">
                   {resource.title}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-3 flex-grow">

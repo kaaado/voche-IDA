@@ -457,7 +457,7 @@ export default function ResourceDetail() {
                   />
                   <Button
                     size="sm"
-                    className="w-full"
+                    className="w-full cursor-pointer"
                     onClick={() => ratingMutation.mutate()}
                     disabled={ratingMutation.isPending}
                     style={{
@@ -477,7 +477,7 @@ export default function ResourceDetail() {
             </div>
           </Card>
 
-          {(resource.type === "course" || resource.type === "video") && (
+          {isAuthenticated && (resource.type === "course" || resource.type === "video") && (
             <Card className="p-6 border-border/60 shadow-sm">
               <h3 className="font-semibold mb-4">Your Progress</h3>
               <div className="space-y-3">
