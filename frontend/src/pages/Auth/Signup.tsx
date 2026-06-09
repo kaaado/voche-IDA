@@ -185,7 +185,7 @@ export default function Register() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="absolute right-0 top-0 h-11 w-11 text-muted-foreground hover:text-foreground"
+                      className="absolute right-0 top-0 h-11 w-11 text-muted-foreground hover:text-foreground cursor-pointer"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -202,7 +202,7 @@ export default function Register() {
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-9 h-11 bg-muted/30 border-input/60 focus:bg-background transition-all"
+                      className="pl-9 h-11 bg-muted/30 border-input/60 focus:bg-background transition-all cursor-pointer"
                       required
                     />
                   </div>
@@ -222,7 +222,7 @@ export default function Register() {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full h-11 shadow-lg shadow-primary/20 text-base font-semibold" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11 shadow-lg shadow-primary/20 text-base font-semibold cursor-pointer" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

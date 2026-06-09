@@ -73,6 +73,7 @@ export default function PatientDashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -286,7 +287,8 @@ export default function PatientDashboard() {
             )}
 
             <div className="absolute bottom-0 right-0">
-              <label className="p-2.5 bg-primary-color hover:bg-primary-color/90 text-white rounded-full cursor-pointer transition-all shadow-xl border-2 border-background flex items-center justify-center z-20 hover:scale-110" title="Upload Photo">
+              <label className="p-2.5 bg-primary-color hover:bg-primary-color/90 text-white rounded-full cursor-pointer transition-all shadow-xl border-2 border-background flex items-center justify-center z-20 hover:scale-110 relative" title="Upload Photo">
+                {isAvatarLoading && <Loader2 size={16} className="absolute animate-spin" />}
                 <Camera size={16} />
                 <input
                   type="file"
@@ -311,7 +313,7 @@ export default function PatientDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-200 text-left font-medium text-sm
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-lg transition-all duration-200 text-left font-medium text-sm cursor-pointer
                     ${isActive
                       ? 'bg-primary/10 text-primary-color shadow-sm ring-1 ring-primary/20'
                       : tab.variant === 'destructive'
@@ -343,7 +345,8 @@ export default function PatientDashboard() {
                   variant={isEditing ? "default" : "outline"}
                   size="sm"
                   onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                  className="gap-2"
+                  className="gap-2 cursor-pointer"
+                  disabled={isEditing && (!formData.first_name.trim() || !formData.last_name.trim() || !formData.email.trim())}
                 >
                   {isEditing ? <Save size={16} /> : <Edit size={16} />}
                   {isEditing ? 'Save Changes' : 'Edit Profile'}

@@ -33,7 +33,7 @@ export default function ForgotPassword() {
 
         <div className="flex items-center gap-2 mb-6">
           <img src={idaLogo} alt="Voche Logo" className="w-8 h-8 object-contain rounded-lg" />
-          <span className="font-bold text-xl">voche</span>
+          <span className="font-bold text-xl uppercase">VOCHE</span>
         </div>
 
         {!submitted ? (
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11 text-base font-semibold cursor-pointer" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
