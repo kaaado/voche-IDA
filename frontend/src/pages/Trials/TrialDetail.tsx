@@ -45,12 +45,13 @@ export default function TrialDetail() {
   const { toggleSave, isSaved: getIsSaved } = useSaveTrial();
   const isSaved = getIsSaved(id ?? "");
 
-  const { data: surveys = [] } = useSurveys();
-  const { data: completedSurveys = [] } = useCompletedSurveys();
-  const completedSurveysList = Array.isArray(completedSurveys) ? completedSurveys : [];
+const { data: surveysData } = useSurveys();
+const surveysList = Array.isArray(surveysData) ? surveysData : [];
 
-  const trialSurvey =
-    surveys.find((s) => s.trial_id === id) ?? surveys[0] ?? null;
+const { data: completedSurveys } = useCompletedSurveys();
+const completedSurveysList = Array.isArray(completedSurveys) ? completedSurveys : [];
+
+ const trialSurvey = surveysList.find((s) => s.trial_id === id) ?? surveysList[0] ?? null;
   const { data: surveyDetail, isLoading: isSurveyLoading } = useSurveyById(
     trialSurvey?.survey_id,
   );
@@ -208,7 +209,7 @@ export default function TrialDetail() {
               className={`font-bold shadow-lg h-12 px-6 rounded-xl transition-all hover:scale-105 ${
                 isConnected
                   ? "text-success-color hover:text-success-color/90 text-success-foreground cursor-default"
-                  : "bg-white text-primary-color hover:bg-white/90"
+                  : "bg-white text-primary-color hover:bg-white/90 cursor-pointer"
               }`}
               onClick={handleConnect}
               disabled={isConnected}

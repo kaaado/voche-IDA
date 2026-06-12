@@ -10,20 +10,27 @@ export function useSaveTrial() {
 
   const mutation = useMutation({
     mutationFn: async ({
-      trialId,
-      isSaved,
-    }: {
-      trialId: string;
-      isSaved: boolean;
-    }) => {
-      if (isSaved) {
-        await apiClient.delete(CLINICAL.SAVE_TRIAL(trialId));
+  trialId,
+  isSaved,
+}: {
+  trialId: string;
+  isSaved: boolean;
+}) => {
+  if (isSaved) {
+    try {
+      await apiClient.delete(CLINICAL.SAVE_TRIAL(trialId));
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
         return { trialId, saved: false };
-      } else {
-        await apiClient.post(CLINICAL.SAVE_TRIAL(trialId));
-        return { trialId, saved: true };
       }
-    },
+      throw err;
+    }
+    return { trialId, saved: false };
+  } else {
+    await apiClient.post(CLINICAL.SAVE_TRIAL(trialId), { notes: null }); // ← add body
+    return { trialId, saved: true };
+  }
+},
 
     onMutate: async ({ trialId, isSaved }) => {
       // Cancel in-flight queries that could overwrite our optimistic update
