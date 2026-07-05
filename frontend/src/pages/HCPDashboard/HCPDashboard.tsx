@@ -7,7 +7,6 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import {
   User,
-  Bell,
   Edit,
   Save,
   FileText,
@@ -15,8 +14,8 @@ import {
   Shield,
   Upload,
   ChevronRight,
-  Stethoscope,
-  Palette
+  Palette,
+  Stethoscope
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -29,7 +28,7 @@ import {
 } from '../../components/ui/select';
 
 import { InterestSelector } from '../../components/profile/InterestSelector';
-import { NotificationSettings } from '../../components/profile/NotificationSettings';
+import { DesignSettings } from '../../components/profile/DesignSettings';
 import { PrivacySettings } from '../../components/profile/PrivacySettings';
 import { DangerZone } from '../../components/profile/DangerZone';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -87,6 +86,8 @@ export default function HCPDashboard() {
     message: '',
   });
 
+  const isFeedbackValid = !!feedbackData.category && !!feedbackData.message.trim();
+
   const handleSave = () => {
     setIsEditing(false);
     toast.success('Profile Updated', {
@@ -119,7 +120,6 @@ export default function HCPDashboard() {
     { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'design', label: 'Design & Appearance', icon: Palette },
     ...(isDoctor ? [{ id: 'doctor', label: 'Doctor Tools', icon: Stethoscope }] : []),
-    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Security', icon: Shield },
     { id: 'danger', label: 'Danger Zone', icon: Lock, variant: 'destructive' }
   ];
@@ -209,6 +209,7 @@ export default function HCPDashboard() {
                   size="sm"
                   onClick={() => isEditing ? handleSave() : setIsEditing(true)}
                   className="gap-2"
+                  disabled={isEditing && (!formData.name.trim() || !formData.email.trim())}
                 >
                   {isEditing ? <Save size={16} /> : <Edit size={16} />}
                   {isEditing ? 'Save Changes' : 'Edit Profile'}
@@ -371,17 +372,14 @@ export default function HCPDashboard() {
                       className="bg-muted/30 resize-none"
                     />
                   </div>
-                  <Button onClick={handleFeedbackSubmit} className="w-full sm:w-auto">Submit Feedback</Button>
+                  <Button onClick={handleFeedbackSubmit} className="w-full sm:w-auto" disabled={!isFeedbackValid}>Submit Feedback</Button>
                 </div>
               </Card>
             </div>
           )}
-
-          {/* New Separate Settings Tabs */}
-          {activeTab === 'notifications' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <NotificationSettings />
-            </div>
+          {/* Design Tab */}
+          {activeTab === 'design' && (
+            <DesignSettings />
           )}
 
           {activeTab === 'privacy' && (

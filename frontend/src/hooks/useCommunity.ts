@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { communityService } from '../services/communityService';
 import type { CreatePostPayload, CreateReplyPayload, ReportPayload } from '../services/communityService';
+import { useErrorHandler } from './useErrorHandler';
+
 
 
 // Fetch all communities 
@@ -62,6 +64,7 @@ export function usePostById(communityId: string | undefined, postId: string | un
 // Create a new post
 export function useCreatePost(communityId: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (payload: CreatePostPayload) =>
@@ -74,10 +77,8 @@ export function useCreatePost(communityId: string) {
       });
     },
 
-    onError: () => {
-      toast.error('Failed to create post', {
-        description: 'Something went wrong. Please try again.',
-      });
+    onError: (err) => {
+      handleError(err, 'Failed to create post. Please try again.');
     },
   });
 }
@@ -85,6 +86,7 @@ export function useCreatePost(communityId: string) {
 // Like a post 
 export function useLikePost(communityId: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (postId: string) =>
@@ -94,8 +96,27 @@ export function useLikePost(communityId: string) {
       queryClient.invalidateQueries({ queryKey: ['community'] });
     },
 
-    onError: () => {
-      toast.error('Could not like post. Please try again.');
+    onError: (err) => {
+      handleError(err, 'Could not like post. Please try again.');
+    },
+  });
+}
+
+// Unlike a post
+export function useUnlikePost(communityId: string) {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: (postId: string) =>
+      communityService.unlikePost(communityId, postId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community'] });
+    },
+
+    onError: (err) => {
+      handleError(err, 'Could not unlike post. Please try again.');
     },
   });
 }
@@ -113,6 +134,7 @@ export function useReplies(communityId: string | undefined, postId: string | und
 // Create a reply on a post
 export function useCreateReply(communityId: string, postId: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (payload: CreateReplyPayload) =>
@@ -131,8 +153,8 @@ export function useCreateReply(communityId: string, postId: string) {
       });
     },
 
-    onError: () => {
-      toast.error('Failed to post reply. Please try again.');
+    onError: (err) => {
+      handleError(err, 'Failed to post reply. Please try again.');
     },
   });
 }
@@ -140,6 +162,7 @@ export function useCreateReply(communityId: string, postId: string) {
 // Like a reply 
 export function useLikeReply(communityId: string, postId: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (replyId: string) =>
@@ -161,13 +184,57 @@ export function useLikeReply(communityId: string, postId: string) {
       return { previous };
     },
 
-    onError: (_err, _replyId, context) => {
+    onError: (err, _replyId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(
           ['community', communityId, 'posts', postId, 'replies'],
           context.previous
         );
       }
+      handleError(err, 'Could not like reply. Please try again.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['community', communityId, 'posts', postId, 'replies'],
+      });
+    },
+  });
+}
+
+// Unlike a reply
+export function useUnlikeReply(communityId: string, postId: string) {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: (replyId: string) =>
+      communityService.unlikeReply(communityId, replyId),
+
+    onMutate: async (replyId) => {
+      const key = ['community', communityId, 'posts', postId, 'replies'];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+
+      queryClient.setQueryData<any[]>(key, (old = []) =>
+        old.map(reply =>
+          reply.comment_id === replyId
+            ? { ...reply, likes_count: Math.max(0, reply.likes_count - 1) }
+            : reply
+        )
+      );
+
+      return { previous };
+    },
+
+    onError: (err, _replyId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['community', communityId, 'posts', postId, 'replies'],
+          context.previous
+        );
+      }
+      handleError(err, 'Could not unlike reply. Please try again.');
     },
 
     onSettled: () => {
@@ -180,6 +247,8 @@ export function useLikeReply(communityId: string, postId: string) {
 
 // Report content
 export function useReportContent(communityId: string) {
+  const { handleError } = useErrorHandler();
+
   return useMutation({
     mutationFn: (payload: ReportPayload) =>
       communityService.reportContent(communityId, payload),
@@ -190,8 +259,57 @@ export function useReportContent(communityId: string) {
       });
     },
 
-    onError: () => {
-      toast.error('Could not submit report. Please try again.');
+    onError: (err) => {
+      handleError(err, 'Could not submit report. Please try again.');
+    },
+  });
+}
+
+// Delete a post
+export function useDeletePost(communityId: string) {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: (postId: string) =>
+      communityService.deletePost(communityId, postId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community'] });
+      toast.success('Post Deleted', {
+        description: 'Your post has been successfully deleted.',
+      });
+    },
+
+    onError: (err) => {
+      handleError(err, 'Failed to delete post. Please try again.');
+    },
+  });
+}
+
+// Delete a reply
+export function useDeleteReply(communityId: string, postId: string) {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: (replyId: string) =>
+      communityService.deleteReply(communityId, replyId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['community', communityId, 'posts', postId, 'replies'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['community', communityId, 'posts', postId],
+      });
+      toast.success('Reply Deleted', {
+        description: 'Your reply has been successfully deleted.',
+      });
+    },
+
+    onError: (err) => {
+      handleError(err, 'Failed to delete reply. Please try again.');
     },
   });
 }

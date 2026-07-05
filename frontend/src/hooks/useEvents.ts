@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventService } from '../services/eventService';
 import { toast } from 'sonner';
+import { useErrorHandler } from './useErrorHandler';
 
 export function useEvents() {
   return useQuery({
@@ -20,6 +21,8 @@ export function useEventById(id?: string) {
 
 export function useRegisterEvent(id?: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
   return useMutation({
     mutationFn: () => eventService.register(id!),
     onSuccess: () => {
@@ -29,16 +32,16 @@ export function useRegisterEvent(id?: string) {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', id] });
     },
-    onError: () => {
-      toast.error('Registration Failed', {
-        description: 'Could not register. Please try again.',
-      });
+    onError: (err) => {
+      handleError(err, 'Could not register. Please try again.');
     },
   });
 }
 
 export function useCancelRegistration(id?: string) {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
   return useMutation({
     mutationFn: () => eventService.cancelRegistration(id!),
     onSuccess: () => {
@@ -48,10 +51,8 @@ export function useCancelRegistration(id?: string) {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', id] });
     },
-    onError: () => {
-      toast.error('Cancellation Failed', {
-        description: 'Could not cancel. Please try again.',
-      });
+    onError: (err) => {
+      handleError(err, 'Could not cancel. Please try again.');
     },
   });
-}
+}

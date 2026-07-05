@@ -32,11 +32,12 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { useErrorHandler } from "../../hooks/useErrorHandler";
 
 export default function ResourceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, openAuthModal } = useAuthContext();
+  const { isAuthenticated, user, openAuthModal } = useAuthContext();
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
@@ -67,6 +68,12 @@ export default function ResourceDetail() {
       )
     : false;
 
+  const hasUserRated = isAuthenticated && user && resource?.reviews?.some(
+    (review: any) => review.user_id === user.id
+  );
+
+  const { handleError } = useErrorHandler();
+
   const ratingMutation = useMutation({
     mutationFn: () =>
       resourceService.rateResource(
@@ -80,8 +87,8 @@ export default function ResourceDetail() {
       setSelectedRating(0);
       setReview("");
     },
-    onError: () => {
-      toast.error("Failed to submit rating. Please try again.");
+    onError: (err) => {
+      handleError(err, "Failed to submit rating. Please try again.");
     },
   });
 
@@ -91,8 +98,8 @@ export default function ResourceDetail() {
     onSuccess: () => {
       toast.success("Progress saved!");
     },
-    onError: () => {
-      toast.error("Failed to save progress.");
+    onError: (err) => {
+      handleError(err, "Failed to save progress.");
     },
   });
 
@@ -322,7 +329,7 @@ export default function ResourceDetail() {
             <Card className="p-6 border-border/60 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Tags</h2>
               <div className="flex flex-wrap gap-2">
-                {resource.tags.map((tag) => (
+                {resource.tags?.map((tag) => (
                   <Badge
                     key={tag}
                     variant="secondary"
@@ -416,66 +423,103 @@ export default function ResourceDetail() {
             </div>
           </Card>
 
-          <Card className="p-6 border-border/60 shadow-sm">
-            <h3 className="font-semibold mb-4">Rate This Resource</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    size={28}
-                    className={`cursor-pointer transition-colors ${
-                      star <= (hoveredStar || selectedRating)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-300"
-                    }`}
-                    onMouseEnter={() => setHoveredStar(star)}
-                    onMouseLeave={() => setHoveredStar(0)}
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        openAuthModal("Sign in to your Voche account to rate resources.");
-                        return;
-                      }
-                      setSelectedRating(star);
-                    }}
-                  />
-                ))}
-                {selectedRating > 0 && (
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    {selectedRating}/5
-                  </span>
-                )}
-              </div>
-              {selectedRating > 0 && (
-                <div className="space-y-3">
-                  <Textarea
-                    placeholder="Write a review (optional)..."
-                    value={review}
-                    onChange={(e) => setReview(e.target.value)}
-                    rows={3}
-                    className="resize-none bg-muted/30"
-                  />
-                  <Button
-                    size="sm"
-                    className="w-full cursor-pointer"
-                    onClick={() => ratingMutation.mutate()}
-                    disabled={ratingMutation.isPending}
-                    style={{
-                      backgroundColor: "hsl(var(--primary))",
-                      color: "white",
-                    }}
-                  >
-                    {ratingMutation.isPending
-                      ? "Submitting..."
-                      : "Submit Rating"}
-                  </Button>
+          {!hasUserRated ? (
+            <Card className="p-6 border-border/60 shadow-sm">
+              <h3 className="font-semibold mb-4">Rate This Resource</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={28}
+                      className={`cursor-pointer transition-colors ${
+                        star <= (hoveredStar || selectedRating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                      onMouseEnter={() => setHoveredStar(star)}
+                      onMouseLeave={() => setHoveredStar(0)}
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          openAuthModal("Sign in to your Voche account to rate resources.");
+                          return;
+                        }
+                        setSelectedRating(star);
+                      }}
+                    />
+                  ))}
+                  {selectedRating > 0 && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {selectedRating}/5
+                    </span>
+                  )}
                 </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Current average: {resource.rating} / 5
+                {selectedRating > 0 && (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Write a review (optional)..."
+                      value={review}
+                      onChange={(e) => setReview(e.target.value)}
+                      rows={3}
+                      className="resize-none bg-muted/30"
+                    />
+                    <Button
+                      size="sm"
+                      className="w-full cursor-pointer"
+                      onClick={() => ratingMutation.mutate()}
+                      disabled={ratingMutation.isPending}
+                      style={{
+                        backgroundColor: "hsl(var(--primary))",
+                        color: "white",
+                      }}
+                    >
+                      {ratingMutation.isPending
+                        ? "Submitting..."
+                        : "Submit Rating"}
+                    </Button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Current average: {resource.rating} / 5
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-6 border-border/60 shadow-sm bg-muted/20">
+              <h3 className="font-semibold mb-2">Rate This Resource</h3>
+              <p className="text-sm text-muted-foreground">
+                You have already rated this resource. Thank you for your feedback!
               </p>
-            </div>
-          </Card>
+              {(() => {
+                const userReview = resource.reviews?.find((r) => r.user_id === user?.id);
+                if (userReview) {
+                  return (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={16}
+                            className={
+                              star <= userReview.rating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-300"
+                            }
+                          />
+                        ))}
+                      </div>
+                      {userReview.review && (
+                        <p className="text-xs italic text-muted-foreground bg-white/50 p-2 rounded">
+                          "{userReview.review}"
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </Card>
+          )}
 
           {isAuthenticated && (resource.type === "course" || resource.type === "video") && (
             <Card className="p-6 border-border/60 shadow-sm">

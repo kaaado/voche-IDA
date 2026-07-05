@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../contexts/DataContext";
+import { Skeleton } from "../../components/ui/skeleton";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Card } from "../../components/ui/card";
@@ -61,17 +62,42 @@ export default function Trials() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [debouncedLocationQuery, setDebouncedLocationQuery] = useState("");
+  const [debouncedSponsorQuery, setDebouncedSponsorQuery] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedLocationQuery(locationQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [locationQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSponsorQuery(sponsorQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [sponsorQuery]);
+
   const {
     data: trials = [],
     isLoading,
     error,
   } = useTrials({
-    search: searchQuery,
+    search: debouncedSearchQuery,
     disease: selectedDisease,
     phase: selectedPhase,
     status: selectedStatus,
-    location: locationQuery,
-    sponsor: sponsorQuery,
+    location: debouncedLocationQuery,
+    sponsor: debouncedSponsorQuery,
   });
 
   const totalPages = Math.ceil(trials.length / itemsPerPage);
@@ -239,23 +265,23 @@ export default function Trials() {
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="p-6 border-0">
-              <div className="animate-pulse space-y-4">
+              <div className="space-y-4">
                 <div className="flex gap-2">
-                  <div className="h-5 w-20 bg-muted rounded-full" />
-                  <div className="h-5 w-16 bg-muted rounded-full" />
-                  <div className="h-5 w-24 bg-muted rounded-full" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
                 </div>
-                <div className="h-6 w-3/4 bg-muted rounded" />
-                <div className="h-4 w-full bg-muted rounded" />
-                <div className="h-4 w-2/3 bg-muted rounded" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
                 <div className="grid md:grid-cols-2 gap-4 pt-2">
                   <div className="space-y-3">
-                    <div className="h-10 bg-muted rounded-lg" />
-                    <div className="h-10 bg-muted rounded-lg" />
+                    <Skeleton className="h-10 rounded-lg" />
+                    <Skeleton className="h-10 rounded-lg" />
                   </div>
                   <div className="space-y-3">
-                    <div className="h-10 bg-muted rounded-lg" />
-                    <div className="h-10 bg-muted rounded-lg" />
+                    <Skeleton className="h-10 rounded-lg" />
+                    <Skeleton className="h-10 rounded-lg" />
                   </div>
                 </div>
               </div>
@@ -402,24 +428,29 @@ export default function Trials() {
                     <FileText size={16} />
                     Eligibility Quiz
                   </Button>
-                  <div className="pt-2">
-                    <div className="flex justify-between text-xs mb-1 font-medium">
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground">Enrollment</span>
-                      <span className="text-xs font-bold text-primary">
-                        {trial.enrollment} / {trial.max_enrollment || "?"}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden w-full">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
-                        style={{
-                          width: trial.max_enrollment
-                            ? `${Math.min((trial.enrollment / trial.max_enrollment) * 100, 100)}%`
-                            : "0%",
-                        }}
-                      />
-                    </div>
-                  </div>
+                  {(() => {
+                    const currentEnrollment = trial.enrollment_count ?? trial.enrollment ?? 0;
+                    return (
+                      <div className="pt-2">
+                        <div className="flex justify-between text-xs mb-1 font-medium">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Enrollment</span>
+                          <span className="text-xs font-bold text-primary">
+                            {currentEnrollment} / {trial.max_enrollment || "?"}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden w-full">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
+                            style={{
+                              width: trial.max_enrollment
+                                ? `${Math.min((currentEnrollment / trial.max_enrollment) * 100, 100)}%`
+                                : "0%",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </Card>

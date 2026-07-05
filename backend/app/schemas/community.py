@@ -86,8 +86,10 @@ class PostAuthor(BaseModel):
 
 class PostSummaryResponse(BaseModel):
     post_id: UUID
+    community_id: UUID
     title: str
     author_display_name: Optional[str] = None
+    author_name: Optional[str] = None
     author_avatar: Optional[str] = None
     community_name: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -110,8 +112,10 @@ class CommentResponse(BaseModel):
     parent_comment_id: Optional[UUID] = None
     content: str
     author_display_name: Optional[str] = None
+    author_name: Optional[str] = None
     author_avatar: Optional[str] = None
     likes_count: int = 0
+    is_liked_by_me: bool = False
     moderation_status: str = "approved"
     is_deleted: bool = False
     created_at: Optional[datetime] = None
@@ -138,8 +142,10 @@ class PostDetailsResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     author_display_name: Optional[str] = None
+    author_name: Optional[str] = None
     author_avatar: Optional[str] = None
     community_name: Optional[str] = None
+    is_liked_by_me: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

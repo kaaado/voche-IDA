@@ -47,6 +47,7 @@ class EventSummaryResponse(BaseModel):
     participants: int = 0
     status: Optional[str] = None
     registration_status: Optional[str] = None  
+    registration_deadline: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

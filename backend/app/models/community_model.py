@@ -182,17 +182,25 @@ class CommunityModel(DBModel):
         offset_ph = add_param(offset)
         limit_ph = add_param(limit)
 
+        if user_id:
+            user_id_ph = add_param(user_id)
+            is_liked_clause = f"EXISTS (SELECT 1 FROM post_likes WHERE post_id = fp.post_id AND user_id = {user_id_ph}) AS is_liked_by_me"
+        else:
+            is_liked_clause = "FALSE AS is_liked_by_me"
+
         query = f"""
             SELECT
                 fp.post_id,
+                fp.community_id,
                 fp.title,
                 u.display_name AS author_display_name,
+                u.display_name AS author_name,
                 u.avatar AS author_avatar,
                 c.name AS community_name,
                 fp.created_at,
                 fp.likes_count,
                 fp.replies_count,
-                FALSE AS is_liked_by_me
+                {is_liked_clause}
             FROM forum_posts fp
             JOIN users u ON fp.user_id = u.id
             JOIN communities c ON fp.community_id = c.community_id
@@ -219,9 +227,16 @@ class CommunityModel(DBModel):
     # 3. GET POST DETAILS
     # ------------------------------------------------------------------
     async def get_post_details(
-        self, post_id: str
+        self, post_id: str, user_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        query = """
+        if user_id:
+            is_liked_clause = ", EXISTS (SELECT 1 FROM post_likes WHERE post_id = fp.post_id AND user_id = $2) AS is_liked_by_me"
+            params = [post_id, user_id]
+        else:
+            is_liked_clause = ", FALSE AS is_liked_by_me"
+            params = [post_id]
+
+        query = f"""
             SELECT
                 fp.post_id,
                 fp.user_id,
@@ -240,15 +255,17 @@ class CommunityModel(DBModel):
                 fp.created_at,
                 fp.updated_at,
                 u.display_name AS author_display_name,
+                u.display_name AS author_name,
                 u.avatar AS author_avatar,
                 c.name AS community_name
+                {is_liked_clause}
             FROM forum_posts fp
             JOIN users u ON fp.user_id = u.id
             JOIN communities c ON fp.community_id = c.community_id
             WHERE fp.post_id = $1
               AND fp.is_deleted = FALSE
         """
-        record = await self.conn.fetchrow(query, post_id)
+        record = await self.conn.fetchrow(query, *params)
         if not record:
             return None
         data = self._record_to_dict(record)
@@ -262,8 +279,17 @@ class CommunityModel(DBModel):
             data["tags"] = []
         return data
 
-    async def get_post_comments(self, post_id: str) -> List[Dict[str, Any]]:
-        query = """
+    async def get_post_comments(
+        self, post_id: str, user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        if user_id:
+            is_liked_clause = ", EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = cm.comment_id AND user_id = $2) AS is_liked_by_me"
+            params = [post_id, user_id]
+        else:
+            is_liked_clause = ", FALSE AS is_liked_by_me"
+            params = [post_id]
+
+        query = f"""
             SELECT
                 cm.comment_id,
                 cm.post_id,
@@ -271,19 +297,21 @@ class CommunityModel(DBModel):
                 cm.parent_comment_id,
                 cm.content,
                 u.display_name AS author_display_name,
+                u.display_name AS author_name,
                 u.avatar AS author_avatar,
                 cm.likes_count,
                 cm.moderation_status,
                 cm.is_deleted,
                 cm.created_at,
                 cm.updated_at
+                {is_liked_clause}
             FROM comments cm
             JOIN users u ON cm.user_id = u.id
             WHERE cm.post_id = $1
               AND cm.is_deleted = FALSE
             ORDER BY cm.created_at ASC
         """
-        records = await self.conn.fetch(query, post_id)
+        records = await self.conn.fetch(query, *params)
         return self._records_to_list(records)
 
     async def increment_post_views(self, post_id: str) -> None:
@@ -581,32 +609,98 @@ class CommunityModel(DBModel):
     # 8. LIKE POST / LIKE COMMENT
     # ------------------------------------------------------------------
     async def like_post(self, post_id: str, user_id: str) -> Dict[str, Any]:
-        row = await self.conn.fetchrow(
-            """
-            UPDATE forum_posts
-            SET likes_count = likes_count + 1
-            WHERE post_id = $1 AND is_deleted = FALSE
-            RETURNING post_id, likes_count
-            """,
-            post_id,
-        )
-        if not row:
-            raise ValueError("Post not found")
-        return self._record_to_dict(row)
+        async with self.conn.transaction():
+            try:
+                await self.conn.execute(
+                    "INSERT INTO post_likes (post_id, user_id) VALUES ($1, $2)",
+                    post_id,
+                    user_id,
+                )
+            except Exception:
+                raise ValueError("You have already liked this post")
+
+            row = await self.conn.fetchrow(
+                """
+                UPDATE forum_posts
+                SET likes_count = likes_count + 1
+                WHERE post_id = $1 AND is_deleted = FALSE
+                RETURNING post_id, likes_count
+                """,
+                post_id,
+            )
+            if not row:
+                raise ValueError("Post not found")
+            return self._record_to_dict(row)
+
+    async def unlike_post(self, post_id: str, user_id: str) -> Dict[str, Any]:
+        async with self.conn.transaction():
+            res = await self.conn.execute(
+                "DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2",
+                post_id,
+                user_id,
+            )
+            if res == "DELETE 0":
+                raise ValueError("You have not liked this post yet")
+
+            row = await self.conn.fetchrow(
+                """
+                UPDATE forum_posts
+                SET likes_count = GREATEST(likes_count - 1, 0)
+                WHERE post_id = $1 AND is_deleted = FALSE
+                RETURNING post_id, likes_count
+                """,
+                post_id,
+            )
+            if not row:
+                raise ValueError("Post not found")
+            return self._record_to_dict(row)
 
     async def like_comment(self, comment_id: str, user_id: str) -> Dict[str, Any]:
-        row = await self.conn.fetchrow(
-            """
-            UPDATE comments
-            SET likes_count = likes_count + 1
-            WHERE comment_id = $1 AND is_deleted = FALSE
-            RETURNING comment_id, likes_count
-            """,
-            comment_id,
-        )
-        if not row:
-            raise ValueError("Comment not found")
-        return self._record_to_dict(row)
+        async with self.conn.transaction():
+            try:
+                await self.conn.execute(
+                    "INSERT INTO comment_likes (comment_id, user_id) VALUES ($1, $2)",
+                    comment_id,
+                    user_id,
+                )
+            except Exception:
+                raise ValueError("You have already liked this comment")
+
+            row = await self.conn.fetchrow(
+                """
+                UPDATE comments
+                SET likes_count = likes_count + 1
+                WHERE comment_id = $1 AND is_deleted = FALSE
+                RETURNING comment_id, likes_count
+                """,
+                comment_id,
+            )
+            if not row:
+                raise ValueError("Comment not found")
+            return self._record_to_dict(row)
+
+    async def unlike_comment(self, comment_id: str, user_id: str) -> Dict[str, Any]:
+        async with self.conn.transaction():
+            res = await self.conn.execute(
+                "DELETE FROM comment_likes WHERE comment_id = $1 AND user_id = $2",
+                comment_id,
+                user_id,
+            )
+            if res == "DELETE 0":
+                raise ValueError("You have not liked this comment yet")
+
+            row = await self.conn.fetchrow(
+                """
+                UPDATE comments
+                SET likes_count = GREATEST(likes_count - 1, 0)
+                WHERE comment_id = $1 AND is_deleted = FALSE
+                RETURNING comment_id, likes_count
+                """,
+                comment_id,
+            )
+            if not row:
+                raise ValueError("Comment not found")
+            return self._record_to_dict(row)
 
     # ------------------------------------------------------------------
     # 9. REPORT CONTENT

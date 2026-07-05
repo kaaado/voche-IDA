@@ -15,6 +15,7 @@ from app.api.dependencies.connections import get_connection
 from app.api.middleware.auth_middleware import auth_middleware, auth_middleware_optional
 from app.services.system_service import SystemService
 from app.schemas.system import FeedbackRequest
+from app.db.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,47 @@ async def submit_feedback(
     Submit platform feedback. Auth optional.
     Returns a ticket ID for reference.
     """
-    service = SystemService(conn)
-
-    # Extract client info for logging
+    user_id = str(current_user["id"]) if current_user else None
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
-    user_id = str(current_user["id"]) if current_user else None
 
+    redis = None
+    try:
+        redis = await get_redis_client()
+    except Exception as e:
+        logger.warning(f"Redis not available for feedback check: {e}")
+
+    if redis:
+        # Check by user ID first
+        if user_id:
+            lock_key = f"feedback_lock:{user_id}"
+            if await redis.get(lock_key):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "success": False,
+                        "error": {
+                            "code": "COOLDOWN_ACTIVE",
+                            "message": "You have already submitted feedback in the last 24 hours.",
+                        },
+                    },
+                )
+        # Check by IP
+        if ip_address:
+            ip_key = f"feedback_lock:ip:{ip_address}"
+            if await redis.get(ip_key):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "success": False,
+                        "error": {
+                            "code": "COOLDOWN_ACTIVE",
+                            "message": "Feedback submission is temporarily locked from this IP address.",
+                        },
+                    },
+                )
+
+    service = SystemService(conn)
     result = await service.submit_feedback(
         user_id=user_id,
         category=data.category,
@@ -54,10 +89,51 @@ async def submit_feedback(
         user_agent=user_agent,
     )
 
+    # Set lock in Redis (24 hours = 86400 seconds)
+    if redis:
+        try:
+            twenty_four_hours = 24 * 60 * 60
+            if user_id:
+                await redis.setex(f"feedback_lock:{user_id}", twenty_four_hours, "1")
+            if ip_address:
+                await redis.setex(f"feedback_lock:ip:{ip_address}", twenty_four_hours, "1")
+        except Exception as e:
+            logger.warning(f"Failed to set lock in Redis: {e}")
+
     return {
         "success": True,
         **result
     }
+
+
+@router.get("/feedback/lock")
+async def check_feedback_lock(
+    request: Request,
+    current_user: Optional[dict] = Depends(auth_middleware_optional),
+):
+    """
+    Check if the feedback submission is locked for 24 hours via Redis.
+    """
+    user_id = str(current_user["id"]) if current_user else None
+    ip_address = request.client.host if request.client else None
+
+    redis = None
+    try:
+        redis = await get_redis_client()
+    except Exception as e:
+        return {"locked": False, "ttl": 0}
+
+    if redis:
+        if user_id:
+            ttl = await redis.ttl(f"feedback_lock:{user_id}")
+            if ttl > 0:
+                return {"locked": True, "ttl": ttl}
+        if ip_address:
+            ttl = await redis.ttl(f"feedback_lock:ip:{ip_address}")
+            if ttl > 0:
+                return {"locked": True, "ttl": ttl}
+
+    return {"locked": False, "ttl": 0}
 
 
 from app.api.middleware.org_admin_middleware import require_org_admin, require_working_group_admin

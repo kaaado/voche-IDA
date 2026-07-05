@@ -47,8 +47,12 @@ export const COMMUNITY = {
   POSTS: (communityId: string) => `${API_BASE}/community/${communityId}/posts`,
   POST_DETAILS: (communityId: string, postId: string) => `${API_BASE}/community/${communityId}/posts/${postId}`,
   LIKE_POST: (communityId: string, postId: string) => `${API_BASE}/community/${communityId}/posts/${postId}/like`,
+  UNLIKE_POST: (communityId: string, postId: string) => `${API_BASE}/community/${communityId}/posts/${postId}/unlike`,
   REPLIES: (communityId: string, postId: string) => `${API_BASE}/community/${communityId}/posts/${postId}/replies`,
   LIKE_REPLY: (communityId: string, replyId: string) => `${API_BASE}/community/${communityId}/replies/${replyId}/like`,
+  UNLIKE_REPLY: (communityId: string, replyId: string) => `${API_BASE}/community/${communityId}/replies/${replyId}/unlike`,
+  DELETE_POST: (communityId: string, postId: string) => `${API_BASE}/community/${communityId}/posts/${postId}`,
+  DELETE_REPLY: (communityId: string, replyId: string) => `${API_BASE}/community/${communityId}/replies/${replyId}`,
   REPORT: (communityId: string) => `${API_BASE}/community/${communityId}/report`,
   ADMIN_REPORTS: `${API_BASE}/community/admin/reports`,
 };
@@ -83,4 +87,6 @@ export const RESOURCES = {
 export const SYSTEM = {
   HEALTH: `${API_BASE}/system/health`,
   STATS: `${API_BASE}/system/stats`,
+  FEEDBACK: `${API_BASE}/system/feedback`,
+  FEEDBACK_LOCK: `${API_BASE}/system/feedback/lock`,
 };

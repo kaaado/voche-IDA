@@ -16,6 +16,8 @@ import {
 import type { UserType } from '../../types/db';
 import idaLogo from '../../assets/ida.webp';
 
+import { useErrorHandler } from '../../hooks/useErrorHandler';
+
 export default function Register() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -24,7 +26,17 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userType, setUserType] = useState<UserType>('patient');
   const [showPassword, setShowPassword] = useState(false);
+  const [consent, setConsent] = useState(false);
   const { register, isLoading } = useAuth();
+  const { handleError } = useErrorHandler();
+
+  const isFormValid =
+    firstName.trim() !== '' &&
+    lastName.trim() !== '' &&
+    email.trim() !== '' &&
+    password.length >= 8 &&
+    password === confirmPassword &&
+    consent;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +48,11 @@ export default function Register() {
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+
+    if (!consent) {
+      toast.error('You must agree to the Terms of Service and Privacy Policy');
       return;
     }
 
@@ -51,6 +68,7 @@ export default function Register() {
       toast.success('Registration successful!');
     } catch (error: any) {
       console.error('Registration error:', error);
+      handleError(error, 'Registration failed. Please try again.');
     }
   };
 
@@ -59,9 +77,9 @@ export default function Register() {
       {/* Branding Section */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#0f172a] text-white flex-col justify-between p-12 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl rounded-full"></div>
-          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-3xl rounded-full"></div>
-          <div className="absolute top-[30%] right-[30%] w-[200px] h-[200px] bg-accent/20 rounded-full blur-3xl rounded-full"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-[30%] right-[30%] w-[200px] h-[200px] bg-accent/20 rounded-full blur-3xl"></div>
         </div>
 
         <div className="z-10 relative">
@@ -214,15 +232,17 @@ export default function Register() {
               <input
                 type="checkbox"
                 id="consent"
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-color focus:ring-primary"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-color focus:ring-primary cursor-pointer"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
                 required
               />
-              <Label htmlFor="consent" className="text-sm font-normal text-muted-foreground leading-snug">
+              <Label htmlFor="consent" className="text-sm font-normal text-muted-foreground leading-snug cursor-pointer">
                 I agree to the <Link to="#" className="text-primary-color hover:underline">Terms of Service</Link> and <Link to="#" className="text-primary-color hover:underline">Privacy Policy</Link>, and consent to data processing.
               </Label>
             </div>
 
-            <Button type="submit" className="w-full h-11 shadow-lg shadow-primary/20 text-base font-semibold cursor-pointer" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11 shadow-lg shadow-primary/20 text-base font-semibold cursor-pointer" disabled={isLoading || !isFormValid}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

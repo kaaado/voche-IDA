@@ -40,7 +40,7 @@ export default function App() {
         <Route path="/trials" element={<Trials />} />
         <Route path="/trials/:id" element={<TrialDetail />} />
         <Route path="/community" element={<Community />} />
-        <Route path="/community/posts/:id" element={<PostDetails />} />
+        <Route path="/community/:communityId/posts/:postId" element={<PostDetails />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:id" element={<ResourceDetails />} />
         <Route path="/events" element={<Events />} />

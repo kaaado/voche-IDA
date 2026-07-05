@@ -104,7 +104,8 @@ class EventModel(DBModel):
         query = f"""
             SELECT
                 e.event_id, e.title, e.event_date, e.event_time,
-                e.type, e.organizer, e.location, e.participants, e.status
+                e.type, e.organizer, e.location, e.participants, e.status,
+                e.registration_deadline
             FROM events e
             {where_clause}
             ORDER BY {order_by}

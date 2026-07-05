@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from '../../components/ui/skeleton';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -21,6 +22,7 @@ import { apiClient } from '../../lib/apiClient';
 import { EVENTS } from '../../lib/api';
 import type { Event } from '../../types/db';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 const fetchEvents = async (): Promise<Event[]> => {
   const res = await apiClient.get(EVENTS.LIST);
@@ -35,15 +37,42 @@ const cancelRegistration = async (id: string): Promise<void> => {
   await apiClient.delete(EVENTS.REGISTER(id));
 };
 
+export const isEventPassed = (event: Event) => {
+  if (event.registration_deadline) {
+    if (new Date(event.registration_deadline) < new Date()) {
+      return true;
+    }
+  }
+  if (event.event_date) {
+    const eventDateTime = new Date(`${event.event_date}T${event.event_time || '23:59:59'}`);
+    if (!isNaN(eventDateTime.getTime())) {
+      return eventDateTime < new Date();
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const evDate = new Date(event.event_date);
+    return evDate < today;
+  }
+  return false;
+};
+
 export default function Events() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated, openAuthModal } = useAuthContext();
+  const { handleError } = useErrorHandler();
 
-  
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [eventType, setEventType] = useState('all');
   const [pendingEventId, setPendingEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const { data: events = [], isLoading, isError } = useQuery({
     queryKey: ['events'],
@@ -60,13 +89,8 @@ export default function Events() {
       setPendingEventId(null);  
     },
     onError: (err: any) => {
-      const status = err?.status || err?.response?.status;
-      if (status === 401 || status === 403) {
-        openAuthModal("Sign in to your Voche account to register for events.");
-      } else {
-        toast.error('Registration failed. Please try again.');
-      }
-       setPendingEventId(null);  
+      handleError(err, 'Registration failed. Please try again.');
+      setPendingEventId(null);  
     },
   });
 
@@ -78,12 +102,7 @@ export default function Events() {
       queryClient.invalidateQueries({ queryKey: ['event', id] });
     },
     onError: (err: any) => {
-      const status = err?.status || err?.response?.status;
-      if (status === 401 || status === 403) {
-        openAuthModal("Sign in to your Voche account to cancel event registration.");
-      } else {
-        toast.error('Cancellation failed. Please try again.');
-      }
+      handleError(err, 'Cancellation failed. Please try again.');
     },
   });
 
@@ -92,7 +111,12 @@ export default function Events() {
     if (!isAuthenticated) {
       openAuthModal("Sign in to your Voche account to register for events.");
       return;
-    } setPendingEventId(event.event_id);
+    }
+    if (isEventPassed(event)) {
+      toast.error('Registration deadline has passed');
+      return;
+    }
+    setPendingEventId(event.event_id);
     if (event.is_registered) {
       cancelMutation.mutate(event.event_id);
     } else {
@@ -100,9 +124,11 @@ export default function Events() {
     }
   };
 
-  const handleShare = (e: React.MouseEvent, title: string) => {
+  const handleShare = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
-    toast.success('Share Link Copied', { description: `Link for ${title} copied to clipboard` });
+    const shareUrl = `${window.location.origin}/events/${event.event_id}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Share Link Copied', { description: `Link for ${event.title} copied to clipboard.` });
   };
 
   const getEventTypeColor = (type: string) => {
@@ -117,22 +143,13 @@ export default function Events() {
 
   const filteredEvents = events.filter(event => {
     const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (event.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      event.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      (event.description || '').toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     const matchesType = eventType === 'all' || event.type === eventType;
     return matchesSearch && matchesType;
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary-color" />
-          <p className="text-muted-foreground animate-pulse">Loading events...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (isError) {
     return (
@@ -209,7 +226,24 @@ export default function Events() {
           <Video className="text-accent" /> Featured Events
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.slice(0, 3).map(event => (
+          {isLoading ? (
+            [...Array(3)].map((_, i) => (
+              <Card key={i} className="overflow-hidden border-border/60">
+                <Skeleton className="h-32 w-full rounded-t-xl" />
+                <div className="p-5 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <div className="flex gap-2 pt-2">
+                    <Skeleton className="h-9 flex-1" />
+                    <Skeleton className="h-9 w-10" />
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            events.slice(0, 3).map(event => (
             <Card
               key={event.event_id}
               className="group overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 border-border/60"
@@ -248,21 +282,24 @@ export default function Events() {
                   <Button
                     className={`flex-1 shadow-sm transition-all cursor-pointer ${event.is_registered ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                     onClick={(e) => handleRegister(e, event)}
-                    disabled={pendingEventId !== null}
+                    disabled={pendingEventId !== null || isEventPassed(event)}
                   >
                     {pendingEventId === event.event_id ? (
                       <><Loader2 className="animate-spin" /> Loading...</>
+                    ) : isEventPassed(event) ? (
+                      'Passed'
                     ) : event.is_registered ? (
-                    <><CheckCircle2 /> Registered</>
+                      <><CheckCircle2 /> Registered</>
                     ) : 'Register Now'}
                   </Button>
-                  <Button variant="outline" size="icon" className="cursor-pointer" onClick={(e) => handleShare(e, event.title)}>
+                  <Button variant="outline" size="icon" className="cursor-pointer" onClick={(e) => handleShare(e, event)}>
                     <Share2 size={18} />
                   </Button>
                 </div>
               </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
       </div>
 
@@ -270,7 +307,30 @@ export default function Events() {
       <div className="space-y-4 pt-4">
         <h2 className="text-xl font-bold">All Upcoming Events</h2>
         <div className="space-y-4">
-          {filteredEvents.map(event => (
+          {isLoading ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-card shadow-md">
+                <Skeleton className="w-full md:w-48 h-24 rounded-lg" />
+                <div className="flex-1 flex flex-col justify-between space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <div className="flex gap-4 mt-3">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-28" />
+                  </div>
+                </div>
+                <div className="flex flex-col justify-center gap-2 min-w-[140px]">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              </div>
+            ))
+          ) : (
+            filteredEvents.map(event => (
             <div
               key={event.event_id}
               className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-card shadow-md hover:border-primary/20 transition-all cursor-pointer group"
@@ -321,11 +381,15 @@ export default function Events() {
                   className={`w-full shadow-sm cursor-pointer ${event.is_registered ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                   variant={event.is_registered ? 'default' : 'outline'}
                   onClick={(e) => handleRegister(e, event)}
-                  disabled={pendingEventId !== null}
+                  disabled={pendingEventId !== null || isEventPassed(event)}
                 >
                   {pendingEventId === event.event_id ? (
                     <><Loader2 className="animate-spin" /> Loading...</>
-                    ) : event.is_registered ? <><CheckCircle2 /> Registered</> : 'Register'}
+                  ) : isEventPassed(event) ? (
+                    'Passed'
+                  ) : event.is_registered ? (
+                    <><CheckCircle2 /> Registered</>
+                  ) : 'Register'}
                 </Button>
                 <Button
                   variant="ghost"
@@ -337,7 +401,8 @@ export default function Events() {
                 </Button>
               </div>
             </div>
-          ))}
+          ))
+        )}
         </div>
       </div>
 

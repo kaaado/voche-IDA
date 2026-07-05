@@ -1,5 +1,6 @@
 import { PageHeader } from "../../components/ui/PageHeader";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { Skeleton } from "../../components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "../../components/ui/card";
@@ -18,7 +19,6 @@ import {
   Play,
   Award,
   TrendingUp,
-  Loader2,
 } from "lucide-react";
 import { Input } from "../../components/ui/input";
 import {
@@ -73,7 +73,7 @@ export default function ResourceLibrary() {
   }, [searchQuery]);
 
   // Task 1: useQuery(['resources'], getAll)
-    const { data, isLoading, isFetching, isError } = useQuery({
+    const { data, isLoading, isError } = useQuery({
     queryKey: [
       "resources",
       debouncedSearch,
@@ -120,22 +120,7 @@ export default function ResourceLibrary() {
     ));
   };
 
-  {(isLoading || isFetching) && resources.length === 0 && (
-    [...Array(6)].map((_, i) => (
-      <div key={i} className="p-5 rounded-xl border bg-card animate-pulse space-y-3">
-        <div className="flex justify-between">
-          <div className="w-10 h-10 bg-muted rounded-xl" />
-          <div className="w-20 h-5 bg-muted rounded" />
-        </div>
-        <div className="h-5 bg-muted rounded w-3/4" />
-        <div className="h-4 bg-muted rounded w-full" />
-        <div className="flex gap-2 mt-4">
-          <div className="h-8 bg-muted rounded flex-1" />
-          <div className="h-8 bg-muted rounded w-16" />
-        </div>
-      </div>
-    ))
-  )}
+
 
   if (isError) {
     return (
@@ -193,7 +178,7 @@ export default function ResourceLibrary() {
                 ${
                   isActive
                     ? "bg-primary-color text-white shadow-md scale-105 border-primary-color/20"
-                    : "bg-card hover:bg-primary-color hover:text-white hover:shadow-md hover:scale-105 hover:border-primary-color/10"
+                    : "bg-card hover:bg-primary-color hover:text-primary-color hover:shadow-md hover:scale-105 hover:border-primary-color/10"
                 }`}
               onClick={() => {
                 setSelectedType(type.id);
@@ -408,7 +393,31 @@ export default function ResourceLibrary() {
       <div className="space-y-4 pt-4">
         <h2 className="text-xl font-bold text-foreground">All Resources</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {!(isLoading && resources.length === 0) && resources.map((resource: Resource) => {
+          {isLoading && resources.length === 0 ? (
+            [...Array(6)].map((_, i) => (
+              <Card key={i} className="p-5 rounded-xl border bg-card space-y-4">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <Skeleton className="w-20 h-5" />
+                </div>
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <div className="space-y-3 mb-5 pt-3 border-t border-dashed">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="flex gap-2.5 mt-auto">
+                  <Skeleton className="h-9 flex-1" />
+                  <Skeleton className="h-9 w-16" />
+                </div>
+              </Card>
+            ))
+          ) : (
+            resources.map((resource: Resource) => {
             const TypeIcon = getTypeIcon(resource.type);
             return (
               <Card
@@ -420,7 +429,7 @@ export default function ResourceLibrary() {
                   <div className="bg-muted p-2.5 rounded-xl group-hover:bg-primary/10 transition-colors">
                     <TypeIcon
                       size={20}
-                      className="text-muted-foreground group-hover:text-primary-color"
+                      className="text-muted-foreground group-hover:text-primary"
                     />
                   </div>
                   <Badge variant="outline" className="text-xs bg-muted/30">
@@ -428,7 +437,7 @@ export default function ResourceLibrary() {
                   </Badge>
                 </div>
 
-                  <h3 className="font-bold text-lg mb-2 group-hover:text-primary-color dark:group-hover:text-accent transition-colors line-clamp-2">
+                  <h3 className="font-bold text-lg mb-2 group-hover:text-primary dark:group-hover:text-accent transition-colors line-clamp-2">
                   {resource.title}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-3 flex-grow">
@@ -532,7 +541,8 @@ export default function ResourceLibrary() {
                 </div>
               </Card>
             );
-          })}
+          })
+        )}
         </div>
       </div>
 

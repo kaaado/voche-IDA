@@ -3,34 +3,38 @@ import { useData } from "../contexts/DataContext";
 import { toast } from "sonner";
 import { apiClient } from "../lib/apiClient";
 import { CLINICAL } from "../lib/api";
+import { useAuthContext } from "../contexts/AuthContext";
+import { useErrorHandler } from "./useErrorHandler";
 
 export function useSaveTrial() {
   const queryClient = useQueryClient();
   const { state, actions } = useData();
+  const { isAuthenticated, openAuthModal } = useAuthContext();
+  const { handleError } = useErrorHandler();
 
   const mutation = useMutation({
     mutationFn: async ({
-  trialId,
-  isSaved,
-}: {
-  trialId: string;
-  isSaved: boolean;
-}) => {
-  if (isSaved) {
-    try {
-      await apiClient.delete(CLINICAL.SAVE_TRIAL(trialId));
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
+      trialId,
+      isSaved,
+    }: {
+      trialId: string;
+      isSaved: boolean;
+    }) => {
+      if (isSaved) {
+        try {
+          await apiClient.delete(CLINICAL.SAVE_TRIAL(trialId));
+        } catch (err: any) {
+          if (err?.response?.status === 404) {
+            return { trialId, saved: false };
+          }
+          throw err;
+        }
         return { trialId, saved: false };
+      } else {
+        await apiClient.post(CLINICAL.SAVE_TRIAL(trialId), { notes: null }); // ← add body
+        return { trialId, saved: true };
       }
-      throw err;
-    }
-    return { trialId, saved: false };
-  } else {
-    await apiClient.post(CLINICAL.SAVE_TRIAL(trialId), { notes: null }); // ← add body
-    return { trialId, saved: true };
-  }
-},
+    },
 
     onMutate: async ({ trialId, isSaved }) => {
       // Cancel in-flight queries that could overwrite our optimistic update
@@ -72,7 +76,7 @@ export function useSaveTrial() {
       }
     },
 
-    onError: (_err, { trialId, isSaved }, context) => {
+    onError: (err, { trialId, isSaved }, context) => {
       // Restore previous cache
       if (context?.previousSavedTrials) {
         queryClient.setQueryData(["savedTrials"], context.previousSavedTrials);
@@ -85,9 +89,7 @@ export function useSaveTrial() {
         actions.unsaveTrial(trialId); // re-remove since save failed
       }
 
-      toast.error("Something went wrong", {
-        description: "Could not update your saved trials. Please try again.",
-      });
+      handleError(err, "Could not update your saved trials. Please try again.");
     },
 
     onSettled: (_data, _err, { trialId }) => {
@@ -97,6 +99,10 @@ export function useSaveTrial() {
   });
 
   const toggleSave = (trialId: string) => {
+    if (!isAuthenticated) {
+      openAuthModal("Sign in to your Voche account to save clinical trials.");
+      return;
+    }
     const isSaved = state.savedTrials.includes(trialId);
     mutation.mutate({ trialId, isSaved });
   };
@@ -105,3 +111,4 @@ export function useSaveTrial() {
 
   return { toggleSave, isSaved, isPending: mutation.isPending };
 }
+

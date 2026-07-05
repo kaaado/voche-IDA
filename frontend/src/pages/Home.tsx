@@ -271,7 +271,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-10">
             <h2 className="text-2xl font-black tracking-tighter flex items-center gap-4">
               <Bell size={28} className="text-secondary-color" />
-              Pulse
+              Notifications
             </h2>
             <Button variant="ghost" size="sm" onClick={() => navigate('/notifications')} className="text-muted-foreground hover:text-secondary-color font-black uppercase tracking-widest text-[10px] hover:bg-secondary-color/5 rounded-xl px-4 h-10 transition-all cursor-pointer">
               View History

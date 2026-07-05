@@ -7,21 +7,27 @@ import { Mail, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import idaLogo from '../../assets/ida.webp';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { handleError } = useErrorHandler();
+
+
+  const isFormValid = email.trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid) return;
     setIsLoading(true);
     try {
       await authService.forgotPassword(email);
       setSubmitted(true);
       toast.success('Reset email sent!');
     } catch (error: any) {
-      toast.error(error.message || 'Something went wrong. Please try again.');
+      handleError(error, 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -33,7 +39,7 @@ export default function ForgotPassword() {
 
         <div className="flex items-center gap-2 mb-6">
           <img src={idaLogo} alt="Voche Logo" className="w-8 h-8 object-contain rounded-lg" />
-          <span className="font-bold text-xl uppercase">VOCHE</span>
+          <span className="font-bold text-xl">Voche</span>
         </div>
 
         {!submitted ? (
@@ -62,7 +68,7 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base font-semibold cursor-pointer" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11 text-base font-semibold cursor-pointer" disabled={isLoading || !isFormValid}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -55,7 +55,7 @@ export const communityService = {
     const response = await apiClient.get(
       COMMUNITY.POST_DETAILS(communityId, postId),
     );
-    return response.data?.data ?? response.data;
+    return response.data?.post ?? response.data;
   },
 
   async createPost(
@@ -71,6 +71,10 @@ export const communityService = {
 
   async likePost(communityId: string, postId: string): Promise<void> {
     await apiClient.post(COMMUNITY.LIKE_POST(communityId, postId));
+  },
+
+  async unlikePost(communityId: string, postId: string): Promise<void> {
+    await apiClient.post(COMMUNITY.UNLIKE_POST(communityId, postId));
   },
 
   // Replies
@@ -95,6 +99,18 @@ export const communityService = {
 
   async likeReply(communityId: string, replyId: string): Promise<void> {
     await apiClient.post(COMMUNITY.LIKE_REPLY(communityId, replyId));
+  },
+
+  async unlikeReply(communityId: string, replyId: string): Promise<void> {
+    await apiClient.post(COMMUNITY.UNLIKE_REPLY(communityId, replyId));
+  },
+
+  async deletePost(communityId: string, postId: string): Promise<void> {
+    await apiClient.delete(COMMUNITY.DELETE_POST(communityId, postId));
+  },
+
+  async deleteReply(communityId: string, replyId: string): Promise<void> {
+    await apiClient.delete(COMMUNITY.DELETE_REPLY(communityId, replyId));
   },
 
   // Reports

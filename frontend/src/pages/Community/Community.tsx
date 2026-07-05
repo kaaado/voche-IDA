@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "../../components/ui/skeleton";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -35,6 +36,7 @@ import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useAuthContext } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import type { PostType } from "../../types/db";
 import {
   useCommunities,
@@ -54,6 +56,8 @@ const postTypeOptions: { id: PostType; name: string }[] = [
 export default function Community() {
   const navigate = useNavigate();
   const { user, isAuthenticated, openAuthModal } = useAuthContext();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const { data: communities = [], isLoading: isLoadingCommunities } =
     useCommunities();
@@ -179,7 +183,7 @@ export default function Community() {
       id: "all",
       name: "All Discussions",
       count: communities.reduce((acc, curr) => acc + curr.post_count, 0),
-      dot: "bg-primary-color",
+      dot: "bg-blue-500",
     },
     ...communities.map((c) => ({
       id: c.community_id,
@@ -221,9 +225,13 @@ export default function Community() {
               <Plus size={20} />
               Start Discussion
             </Button>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent className={`sm:max-w-[525px] border shadow-xl ${
+              !isDark 
+                ? "bg-white text-zinc-950 border-zinc-200" 
+                : "bg-zinc-900 text-white border-zinc-800"
+            }`}>
               <DialogHeader>
-                <DialogTitle>Start a New Discussion</DialogTitle>
+                <DialogTitle className={!isDark ? 'text-zinc-950' : 'text-white'}>Start a New Discussion</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 {/* Community selector */}
@@ -295,10 +303,19 @@ export default function Community() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setIsNewPostOpen(false)} 
+                  className={`cursor-pointer ${!isDark ? 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
+                >
+                  Cancel
+                </Button>
                 <Button
                   onClick={handleCreatePost}
-                  disabled={createPost.isPending}
+                  disabled={createPost.isPending || !newPostTitle.trim() || !newPostContent.trim() || !newPostType || !activeCommunityId}
+                  className="cursor-pointer"
                 >
                   {createPost.isPending ? "Posting..." : "Post Discussion"}
                 </Button>
@@ -311,16 +328,18 @@ export default function Community() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {isLoadingCommunities
           ? [...Array(7)].map((_, i) => (
-              <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />
+              <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))
           : categoryTabs.map((category) => (
               <div
                 key={category.id}
-                className={`p-4 rounded-xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-2 border border-transparent
+                className={`p-4 rounded-xl cursor-pointer transition-all duration-300 flex flex-col items-center text-center gap-2 border shadow-sm
                   ${
                     selectedCategory === category.id
-                      ? "bg-gradient-to-br from-primary-color to-success-color text-white shadow-lg scale-105 border-primary-color/20"
-                      : "bg-card hover:bg-muted/60 hover:shadow-md hover:scale-105 hover:border-primary-color/10"
+                      ? "bg-primary-color text-primary-foreground shadow-lg scale-105 border-primary"
+                      : !isDark
+                        ? "bg-white text-zinc-900 hover:bg-zinc-50 hover:shadow-md hover:scale-105 border-zinc-200"
+                        : "bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:shadow-md hover:scale-105 border-zinc-800"
                   }`}
                 onClick={() => {
                   setSelectedCategory(category.id);
@@ -335,7 +354,9 @@ export default function Community() {
                   className={`text-[10px] px-2 py-0.5 rounded-full ${
                     selectedCategory === category.id
                       ? "bg-white/20 text-white"
-                      : "text-muted-foreground bg-muted-foreground/10"
+                      : !isDark
+                        ? "text-zinc-500 bg-zinc-100"
+                        : "text-zinc-400 bg-zinc-800"
                   }`}
                 >
                   {category.count}
@@ -432,12 +453,12 @@ export default function Community() {
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="p-6 border-0">
-              <div className="animate-pulse flex gap-4">
-                <div className="w-12 h-12 bg-muted rounded-full shrink-0" />
+              <div className="flex gap-4">
+                <Skeleton className="w-12 h-12 rounded-full shrink-0" />
                 <div className="flex-1 space-y-3">
-                  <div className="h-5 w-3/4 bg-muted rounded" />
-                  <div className="h-4 w-full bg-muted rounded" />
-                  <div className="h-4 w-2/3 bg-muted rounded" />
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
                 </div>
               </div>
             </Card>
@@ -488,7 +509,7 @@ export default function Community() {
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                         <div className="space-y-1">
-                          <h3 className="text-lg font-bold text-primary-color group-hover:text-primary-color/80 transition-colors">
+                          <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                             {post.title}
                           </h3>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -520,7 +541,7 @@ export default function Community() {
                       </p>
 
                       <div className="flex flex-wrap gap-2">
-                        {post.tags.map((tag: string) => (
+                        {post.tags?.map((tag: string) => (
                           <Badge
                             key={tag}
                             variant="outline"

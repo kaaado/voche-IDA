@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { authService } from '../../services/authService';
 import idaLogo from '../../assets/ida.webp';
 
+import { useErrorHandler } from '../../hooks/useErrorHandler';
+
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,9 +18,12 @@ export default function ResetPassword() {
   const [submitted, setSubmitted] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { handleError } = useErrorHandler();
 
   // Extract token from URL
   const token = searchParams.get('token');
+
+  const isFormValid = newPassword.length >= 8 && newPassword === confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,11 +49,12 @@ export default function ResetPassword() {
       setSubmitted(true);
       toast.success('Password reset successfully!');
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Reset failed. Your link may have expired.');
+      handleError(error, 'Reset failed. Your link may have expired.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   if (!token) {
     return (
@@ -127,7 +133,7 @@ export default function ResetPassword() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading || !isFormValid}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

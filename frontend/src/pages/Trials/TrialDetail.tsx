@@ -293,24 +293,29 @@ const completedSurveysList = Array.isArray(completedSurveys) ? completedSurveys 
             </div>
 
             {/* Enrollment Progress */}
-            <div className="mt-8 pt-6 border-t border-dashed">
-              <div className="flex justify-between text-sm mb-2 font-medium">
-                <span className="text-muted-foreground">Enrollment Progress</span>
-                <span className="text-primary-color font-bold">
-                  {trial.enrollment} / {trial.max_enrollment || "?"} Participants
-                </span>
-              </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary-color rounded-full transition-all duration-1000 ease-out"
-                  style={{
-                    width: trial.max_enrollment
-                      ? `${Math.min((trial.enrollment / trial.max_enrollment) * 100, 100)}%`
-                      : "0%",
-                  }}
-                />
-              </div>
-            </div>
+            {(() => {
+              const currentEnrollment = trial.enrollment_count ?? trial.enrollment ?? 0;
+              return (
+                <div className="mt-8 pt-6 border-t border-dashed">
+                  <div className="flex justify-between text-sm mb-2 font-medium">
+                    <span className="text-muted-foreground">Enrollment Progress</span>
+                    <span className="text-primary-color font-bold">
+                      {currentEnrollment} / {trial.max_enrollment || "?"} Participants
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-color rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: trial.max_enrollment
+                          ? `${Math.min((currentEnrollment / trial.max_enrollment) * 100, 100)}%`
+                          : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </Card>
 
           {/* Eligibility Criteria */}

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -277,7 +277,8 @@ async def get_post(
     """Get post details with replies. Public endpoint with optional auth."""
     model = CommunityModel(conn)
 
-    post = await model.get_post_details(str(post_id))
+    user_id = current_user["id"] if current_user else None
+    post = await model.get_post_details(str(post_id), user_id=user_id)
     if not post:
         raise HTTPException(
             status_code=404,
@@ -293,7 +294,7 @@ async def get_post(
     # Increment views
     await model.increment_post_views(str(post_id))
 
-    comments = await model.get_post_comments(str(post_id))
+    comments = await model.get_post_comments(str(post_id), user_id=user_id)
 
     return {"post": post, "replies": comments}
 
@@ -522,6 +523,23 @@ async def delete_reply(
 
 
 # ----------------------------------------------------------------------
+# 8d. GET POST REPLIES
+# ----------------------------------------------------------------------
+@router.get("/{community_id}/posts/{post_id}/replies", response_model=List[CommentResponse])
+async def get_post_replies(
+    community_id: UUID,
+    post_id: UUID,
+    conn=Depends(get_connection),
+    current_user: Optional[dict] = Depends(auth_middleware_optional),
+):
+    """Get all replies for a post. Public endpoint with optional auth."""
+    model = CommunityModel(conn)
+    user_id = current_user["id"] if current_user else None
+    comments = await model.get_post_comments(str(post_id), user_id=user_id)
+    return comments
+
+
+# ----------------------------------------------------------------------
 # 9a. LIKE POST
 # ----------------------------------------------------------------------
 @router.post("/{community_id}/posts/{post_id}/like")
@@ -555,6 +573,28 @@ async def like_post(
         except:
             pass
 
+        return {"success": True, "data": result}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "error": {"code": "NOT_FOUND", "message": str(e)},
+            },
+        )
+
+
+@router.post("/{community_id}/posts/{post_id}/unlike")
+async def unlike_post(
+    community_id: UUID,
+    post_id: UUID,
+    conn=Depends(get_connection),
+    current_user: dict = Depends(auth_middleware),
+):
+    """Unlike a post. Auth required."""
+    model = CommunityModel(conn)
+    try:
+        result = await model.unlike_post(str(post_id), current_user["id"])
         return {"success": True, "data": result}
     except ValueError as e:
         raise HTTPException(
@@ -613,6 +653,28 @@ async def like_reply(
         )
 
 
+@router.post("/{community_id}/replies/{comment_id}/unlike")
+async def unlike_reply(
+    community_id: UUID,
+    comment_id: UUID,
+    conn=Depends(get_connection),
+    current_user: dict = Depends(auth_middleware),
+):
+    """Unlike a reply/comment. Auth required."""
+    model = CommunityModel(conn)
+    try:
+        result = await model.unlike_comment(str(comment_id), current_user["id"])
+        return {"success": True, "data": result}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "success": False,
+                "error": {"code": "NOT_FOUND", "message": str(e)},
+            },
+        )
+
+
 # ----------------------------------------------------------------------
 # 9c. REPORT CONTENT
 # ----------------------------------------------------------------------
@@ -629,11 +691,42 @@ async def report_content(
 ):
     """Report content within a community. Auth required."""
     model = CommunityModel(conn)
+    redis_key = f"report:{current_user['id']}:{request.target_id}"
+    redis = None
+    
+    try:
+        from app.db.redis import get_redis_client
+        redis = await get_redis_client()
+        if redis:
+            is_reported = await redis.get(redis_key)
+            if is_reported:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "success": False,
+                        "error": {"code": "CONFLICT", "message": "You have already reported this content"},
+                    },
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Redis check failed in report_content: {e}")
+
     try:
         report = await model.create_content_report(
             reporter_id=current_user["id"],
             payload=request.model_dump(),
         )
+        
+        # Save to redis to prevent duplicates (24 hours expiration)
+        if redis:
+            try:
+                await redis.setex(redis_key, 86400, "1")
+            except Exception as re:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to cache report in Redis: {re}")
+                
         return report
     except ValueError as e:
         raise HTTPException(

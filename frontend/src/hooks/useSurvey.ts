@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { surveyService } from '../services/surveyService';
 import type { SubmitSurveyPayload } from '../services/surveyService';
+import { useErrorHandler } from './useErrorHandler';
 
 export function useSurveys() {
   return useQuery({
@@ -22,6 +23,7 @@ export function useSurveyById(surveyId: string | undefined) {
 
 export function useSubmitSurvey() {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: ({ surveyId, payload }: { surveyId: string; payload: SubmitSurveyPayload }) =>
@@ -34,13 +36,13 @@ export function useSubmitSurvey() {
       });
     },
 
-    onError: () => {
-      toast.error('Submission Failed', {
-        description: 'Could not submit your responses. Please try again.',
-      });
+    onError: (err) => {
+      handleError(err, 'Could not submit your responses. Please try again.');
     },
   });
 }
+
+
 
 export function useCompletedSurveys() {
   return useQuery({

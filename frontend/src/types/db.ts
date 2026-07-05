@@ -171,6 +171,7 @@ export interface ClinicalTrial {
   start_date?: string;
   estimated_completion?: string;
   enrollment: number;
+  enrollment_count?: number;
   max_enrollment?: number;
   contact?: string;
   metadata: Record<string, any>;
@@ -260,6 +261,7 @@ export interface ForumPost {
   created_at: string;
   updated_at: string;
   author_name?: string; // UI convenience
+  is_liked_by_me?: boolean;
 }
 
 export interface Comment {
@@ -273,6 +275,8 @@ export interface Comment {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+  author_name?: string;
+  is_liked_by_me?: boolean;
 }
 
 export interface ContentReport {
@@ -365,6 +369,8 @@ export interface Resource {
   requires_auth: boolean;
   created_at: string;
   updated_at: string;
+  ratings_count?: number;
+  reviews?: (ResourceRating & { user_display_name?: string })[];
 }
 
 export interface ResourceRating {

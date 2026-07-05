@@ -8,7 +8,6 @@ import { Badge } from '../../components/ui/badge';
 import { Textarea } from '../../components/ui/textarea';
 import {
   User,
-  Bell,
   MapPin,
   Edit,
   Save,
@@ -36,7 +35,6 @@ import {
 } from '../../components/ui/select';
 
 import { InterestSelector } from '../../components/profile/InterestSelector';
-import { NotificationSettings } from '../../components/profile/NotificationSettings';
 import { PrivacySettings } from '../../components/profile/PrivacySettings';
 import { DangerZone } from '../../components/profile/DangerZone';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -176,6 +174,7 @@ export default function PatientDashboard() {
       }
 
       try {
+        setIsAvatarLoading(true);
         let finalFile = file;
         try {
           finalFile = await compressImage(file);
@@ -191,6 +190,8 @@ export default function PatientDashboard() {
         toast.error('Upload Failed', { 
           description: error?.message || 'Could not upload avatar. Please try again.' 
         });
+      } finally {
+        setIsAvatarLoading(false);
       }
     }
   };
@@ -222,7 +223,6 @@ export default function PatientDashboard() {
     { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'design', label: 'Design & Appearance', icon: Palette },
     { id: 'saved', label: 'Saved Trials', icon: Heart },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Security', icon: Shield },
     { id: 'danger', label: 'Danger Zone', icon: Lock, variant: 'destructive' }
   ];
@@ -527,12 +527,7 @@ export default function PatientDashboard() {
             <DesignSettings />
           )}
 
-          {/* New Separate Settings Tabs */}
-          {activeTab === 'notifications' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <NotificationSettings />
-            </div>
-          )}
+
 
           {activeTab === 'privacy' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

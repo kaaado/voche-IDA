@@ -1,6 +1,7 @@
 import Navigation from './Navigation';
 import Footer from './Footer.tsx'
 import { Outlet } from "react-router-dom";
+import FeedbackModal from './FeedbackModal';
 
 export default function Layout() {
   return (
@@ -10,6 +11,7 @@ export default function Layout() {
         <Outlet/>
       </main>
       <Footer />
+      <FeedbackModal />
     </div>
   );
 }

@@ -14,9 +14,13 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Plus, Calendar, Building, AlignLeft, Type } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export function SuggestEventModal({ children }: { children?: React.ReactNode }) {
     const [open, setOpen] = useState(false);
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+    
     const [formData, setFormData] = useState({
         title: '',
         organizer: '',
@@ -24,9 +28,11 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
         description: ''
     });
 
+    const isFormValid = formData.title.trim() !== '' && formData.date !== '';
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.title || !formData.date) {
+        if (!isFormValid) {
             toast.error("Missing Information", {
                 description: "Please provide at least a title and date."
             });
@@ -46,6 +52,7 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
         setFormData({ title: '', organizer: '', date: '', description: '' });
     };
 
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -56,19 +63,23 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] border-border/60 shadow-xl bg-card">
+            <DialogContent className={`sm:max-w-[500px] border shadow-xl ${
+                !isDark 
+                    ? "bg-white text-zinc-950 border-zinc-200" 
+                    : "bg-zinc-900 text-white border-zinc-800"
+            }`}>
                 <DialogHeader>
                     <div className="mx-auto bg-primary/10 p-3 rounded-full mb-2 text-primary">
                         <Calendar size={28} />
                     </div>
-                    <DialogTitle className="text-center text-xl font-bold">Suggest an Event</DialogTitle>
-                    <DialogDescription className="text-center px-4">
+                    <DialogTitle className={`text-center text-xl font-bold ${!isDark ? 'text-zinc-950' : 'text-white'}`}>Suggest an Event</DialogTitle>
+                    <DialogDescription className={`text-center px-4 ${!isDark ? 'text-zinc-650' : 'text-zinc-350'}`}>
                         Know of an upcoming conference, webinar, or workshop? Share it with the community.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="title" className="flex items-center gap-2 text-primary">
+                        <Label htmlFor="title" className={`flex items-center gap-2 ${!isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>
                             <Type size={14} /> Event Title
                         </Label>
                         <Input
@@ -81,7 +92,7 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="organizer" className="flex items-center gap-2 text-primary">
+                            <Label htmlFor="organizer" className={`flex items-center gap-2 ${!isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>
                                 <Building size={14} /> Organizer
                             </Label>
                             <Input
@@ -93,7 +104,7 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="date" className="flex items-center gap-2 text-primary">
+                            <Label htmlFor="date" className={`flex items-center gap-2 ${!isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>
                                 <Calendar size={14} /> Date
                             </Label>
                             <Input
@@ -106,7 +117,7 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="description" className="flex items-center gap-2 text-primary">
+                        <Label htmlFor="description" className={`flex items-center gap-2 ${!isDark ? 'text-zinc-700' : 'text-zinc-300'}`}>
                             <AlignLeft size={14} /> Description
                         </Label>
                         <Textarea
@@ -118,8 +129,8 @@ export function SuggestEventModal({ children }: { children?: React.ReactNode }) 
                         />
                     </div>
                     <DialogFooter className="pt-2">
-                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                        <Button type="submit" className="gap-2 shadow-md">
+                        <Button type="button" variant="ghost" onClick={() => setOpen(false)} className={`cursor-pointer ${!isDark ? 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>Cancel</Button>
+                        <Button type="submit" className="gap-2 shadow-md cursor-pointer" disabled={!isFormValid}>
                             <Plus size={16} />
                             Submit Suggestion
                         </Button>
