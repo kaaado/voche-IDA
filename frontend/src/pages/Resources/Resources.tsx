@@ -395,7 +395,7 @@ export default function ResourceLibrary() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading && resources.length === 0 ? (
             [...Array(6)].map((_, i) => (
-              <Card key={i} className="p-5 rounded-xl border bg-card space-y-4">
+              <Card key={i} className="p-5 rounded-xl border-0 bg-card space-y-4">
                 <div className="flex justify-between items-start">
                   <Skeleton className="w-10 h-10 rounded-xl" />
                   <Skeleton className="w-20 h-5" />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card } from "../../components/ui/card";
+import { Skeleton } from "../../components/ui/skeleton";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -136,17 +137,17 @@ const completedSurveysList = Array.isArray(completedSurveys) ? completedSurveys 
   if (isLoading) {
     return (
       <div className="container mx-auto p-4 md:p-8 space-y-6">
-        <div className="h-9 w-32 bg-muted rounded animate-pulse" />
-        <div className="h-40 bg-muted rounded-2xl animate-pulse" />
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-40" />
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="h-64 bg-muted rounded-2xl animate-pulse" />
-            <div className="h-48 bg-muted rounded-2xl animate-pulse" />
-            <div className="h-56 bg-muted rounded-2xl animate-pulse" />
+            <Skeleton className="h-64" />
+            <Skeleton className="h-48" />
+            <Skeleton className="h-56" />
           </div>
           <div className="space-y-6">
-            <div className="h-48 bg-muted rounded-2xl animate-pulse" />
-            <div className="h-40 bg-muted rounded-2xl animate-pulse" />
+            <Skeleton className="h-48" />
+            <Skeleton className="h-40" />
           </div>
         </div>
       </div>

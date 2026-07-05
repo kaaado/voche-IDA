@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
+import { Skeleton } from '../../components/ui/skeleton';
 import { Badge } from '../../components/ui/badge';
 import {
   Calendar,
@@ -12,8 +13,7 @@ import {
   Share2,
   CalendarPlus,
   CheckCircle2,
-  Video,
-  Loader2
+  Video
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { toast } from 'sonner';
@@ -40,8 +40,19 @@ export default function EventDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary-color" />
+      <div className="container mx-auto p-4 md:p-8 space-y-6">
+        <Skeleton className="h-9 w-32" />
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="h-12 w-3/4 animate-pulse" />
+            <Skeleton className="h-[360px] w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-56 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        </div>
       </div>
     );
   }

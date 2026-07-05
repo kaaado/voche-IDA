@@ -228,7 +228,7 @@ export default function Events() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             [...Array(3)].map((_, i) => (
-              <Card key={i} className="overflow-hidden border-border/60">
+              <Card key={i} className="overflow-hidden border-0 bg-card">
                 <Skeleton className="h-32 w-full rounded-t-xl" />
                 <div className="p-5 space-y-3">
                   <Skeleton className="h-6 w-3/4" />
@@ -309,7 +309,7 @@ export default function Events() {
         <div className="space-y-4">
           {isLoading ? (
             [...Array(3)].map((_, i) => (
-              <div key={i} className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-card shadow-md">
+              <div key={i} className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-card shadow-none border-0">
                 <Skeleton className="w-full md:w-48 h-24 rounded-lg" />
                 <div className="flex-1 flex flex-col justify-between space-y-2">
                   <div className="flex justify-between">

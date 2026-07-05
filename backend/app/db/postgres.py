@@ -13,8 +13,11 @@ class PostgresDB:
 
     @classmethod
     async def connect(cls):
+        dsn = settings.database_url
+        if dsn.startswith("postgres://"):
+            dsn = dsn.replace("postgres://", "postgresql://", 1)
         cls.__pool = await asyncpg.create_pool(
-            dsn=settings.database_url,
+            dsn=dsn,
             min_size=5,
             max_size=20,
             command_timeout=60,

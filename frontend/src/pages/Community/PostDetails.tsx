@@ -215,10 +215,53 @@ export default function PostDetail() {
   if (isLoading) {
     return (
       <div className="container mx-auto p-4 md:p-8 max-w-4xl space-y-6">
-        <Skeleton className="h-9 w-32 rounded" />
-        <Skeleton className="h-40 rounded-2xl" />
-        <Skeleton className="h-64 rounded-2xl" />
-        <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-9 w-32" />
+        
+        {/* Page title area skeleton */}
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+
+        {/* Post body skeleton */}
+        <Card className="p-6 md:p-8 space-y-4 border-0">
+          <div className="flex gap-4">
+            <Skeleton className="w-14 h-14 rounded-full shrink-0" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-6 w-1/2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 pt-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <div className="border-t border-dashed pt-4 flex gap-4">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </Card>
+
+        {/* Replies loading skeleton */}
+        <div className="space-y-4 pt-4">
+          <Skeleton className="h-6 w-32" />
+          {[...Array(2)].map((_, i) => (
+            <Card key={i} className="p-6 border-0">
+              <div className="flex gap-4">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -366,7 +409,7 @@ export default function PostDetail() {
         {isLoadingReplies ? (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
-              <Card key={i} className="p-6">
+              <Card key={i} className="p-6 border-0">
                 <div className="flex gap-4">
                   <Skeleton className="w-10 h-10 rounded-full shrink-0" />
                   <div className="flex-1 space-y-2">
