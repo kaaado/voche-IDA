@@ -1,0 +1,51 @@
+**Use Case: Unregistered User (Guest)**
+
+🔓 Publicly Accessible Endpoints (No Auth) Work
+
+- Unauthenticated downloadable resources: 
+  - <https://www.voche.org/resources/b3af2d49-656e-4782-92dc-6677ef511037>
+  - <https://www.voche.org/resources/fa5241bd-8488-4776-bf53-24727824d1bd>
+
+- Download Resource Button - downloads the resource without authentication
+- No visible pdf when downloaded
+
+UI / UX & State Management - UI/Styling
+
+- Events page placeholder images
+- Need darker background colours for the event details box against the white text
+
+Error Handling, Validation & Other
+
+- Need to add ‘Privacy’ and ‘Terms’ documentation
+- Linkedin url
+- Google and Apple login integration for log in
+- Change IDA logo image
+
+**Use Case: Registered User (Patient)**
+
+🔐 Authenticated Endpoints (Auth Required)
+
+- The discussion does not post for the ‘Breast Cancer Awareness’ category
+  - https://www.voche.org/community
+
+- Download resource button - downloads, but no visible pdf when opened
+- Preview resource button - no preview
+
+UI / UX & State Management - UI/Styling
+
+- Events page placeholder images
+- Need darker background colors for the event details box against the white text
+
+- Profile settings
+  - Interests & Focus Areas section has 2 headings and subtext
+  - Either combine or separate sections
+  - Make the ‘Phase 3’ label text white
+
+Error Handling, Validation & Other
+  - Need to add ‘Privacy’ and ‘Terms’ documentation
+  - Linkedin url
+  - Google and Apple login integration for log in
+  - Change IDA logo image
+
+***Detailed testing results: https://docs.google.com/document/d/1ZS6K0HE8fjViVt4VEOk5u1uAYBQPhyzsKukLiZRQrws/edit?usp=sharing***
+
